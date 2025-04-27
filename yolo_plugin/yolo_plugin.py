@@ -21,180 +21,170 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+
+import os
+
+import numpy as np
+from qgis.core import (
+    QgsCategorizedSymbolRenderer,
+    QgsFeature,
+    QgsField,
+    QgsFields,
+    QgsFillSymbol,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject,
+    QgsRendererCategory,
+    QgsVectorLayer,
+)
+from qgis.PyQt.QtCore import QCoreApplication, QMetaType
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
-
-# Initialize Qt resources from file resources.py
-from .resources import *
-# Import the code for the dialog
-from .yolo_plugin_dialog import YOLOPluginDialog
-import os.path
+from ultralytics import YOLO
 
 
 class YOLOPlugin:
-    """QGIS Plugin Implementation."""
-
     def __init__(self, iface):
-        """Constructor.
-
-        :param iface: An interface instance that will be passed to this class
-            which provides the hook by which you can manipulate the QGIS
-            application at run time.
-        :type iface: QgsInterface
-        """
-        # Save reference to the QGIS interface
         self.iface = iface
-        # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
-        # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'YOLOPlugin_{}.qm'.format(locale))
-
-        if os.path.exists(locale_path):
-            self.translator = QTranslator()
-            self.translator.load(locale_path)
-            QCoreApplication.installTranslator(self.translator)
-
-        # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&YOLO Plugin')
+        self.menu = self.tr("&YOLO Plugin")
 
-        # Check if plugin was started the first time in current QGIS session
-        # Must be set in initGui() to survive plugin reloads
-        self.first_start = None
+        model_path = os.path.join(self.plugin_dir, "models/YOLOv8s.pt")
+        self.model = YOLO(model_path)
 
-    # noinspection PyMethodMayBeStatic
+        self.class_colors = {
+            0: "red",
+            1: "blue",
+            2: "orange",
+            3: "yellow",
+            4: "cyan",
+        }
+
     def tr(self, message):
-        """Get the translation for a string using Qt translation API.
+        return QCoreApplication.translate("YOLOPlugin", message)
 
-        We implement this ourselves since we do not inherit QObject.
-
-        :param message: String for translation.
-        :type message: str, QString
-
-        :returns: Translated version of message.
-        :rtype: QString
-        """
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('YOLOPlugin', message)
-
-
-    def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
-        """Add a toolbar icon to the toolbar.
-
-        :param icon_path: Path to the icon for this action. Can be a resource
-            path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
-        :type icon_path: str
-
-        :param text: Text that should be shown in menu items for this action.
-        :type text: str
-
-        :param callback: Function to be called when the action is triggered.
-        :type callback: function
-
-        :param enabled_flag: A flag indicating if the action should be enabled
-            by default. Defaults to True.
-        :type enabled_flag: bool
-
-        :param add_to_menu: Flag indicating whether the action should also
-            be added to the menu. Defaults to True.
-        :type add_to_menu: bool
-
-        :param add_to_toolbar: Flag indicating whether the action should also
-            be added to the toolbar. Defaults to True.
-        :type add_to_toolbar: bool
-
-        :param status_tip: Optional text to show in a popup when mouse pointer
-            hovers over the action.
-        :type status_tip: str
-
-        :param parent: Parent widget for the new action. Defaults None.
-        :type parent: QWidget
-
-        :param whats_this: Optional text to show in the status bar when the
-            mouse pointer hovers over the action.
-
-        :returns: The action that was created. Note that the action is also
-            added to self.actions list.
-        :rtype: QAction
-        """
-
+    def add_action(self, icon_path, text, callback, parent=None):
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
-        action.setEnabled(enabled_flag)
-
-        if status_tip is not None:
-            action.setStatusTip(status_tip)
-
-        if whats_this is not None:
-            action.setWhatsThis(whats_this)
-
-        if add_to_toolbar:
-            # Adds plugin icon to Plugins toolbar
-            self.iface.addToolBarIcon(action)
-
-        if add_to_menu:
-            self.iface.addPluginToMenu(
-                self.menu,
-                action)
-
+        self.iface.addToolBarIcon(action)
+        self.iface.addPluginToMenu(self.menu, action)
         self.actions.append(action)
-
         return action
 
     def initGui(self):
-        """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
-        icon_path = ':/plugins/yolo_plugin/icon.png'
+        icon_path = ":/plugins/yolo_plugin/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr(u'Run YOLO detection'),
+            text=self.tr("Run YOLO detection"),
             callback=self.run,
-            parent=self.iface.mainWindow())
-
-        # will be set False in run()
-        self.first_start = True
-
+            parent=self.iface.mainWindow(),
+        )
 
     def unload(self):
-        """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&YOLO Plugin'),
-                action)
+            self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
 
-
     def run(self):
-        """Run method that performs all the real work"""
+        self.detect_objects()
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
-            self.first_start = False
-            self.dlg = YOLOPluginDialog()
+    def detect_objects(self):
+        canvas = self.iface.mapCanvas()
+        img = canvas.grab().toImage()
 
-        # show the dialog
-        self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        width = img.width()
+        height = img.height()
+        ptr = img.bits()
+        ptr.setsize(img.byteCount())
+
+        img_array = np.array(ptr).reshape((height, width, 4))
+
+        img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
+
+        results = self.model.predict(img_rgb)
+
+        layer = None
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr.name() == "YOLO Detections":
+                layer = lyr
+                break
+
+        if layer is None:
+            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
+            pr = layer.dataProvider()
+            fields = QgsFields()
+            fields.append(QgsField("class", QMetaType.Type.QString))
+            pr.addAttributes(fields)
+            layer.updateFields()
+            QgsProject.instance().addMapLayer(layer)
+        else:
+            pr = layer.dataProvider()
+
+        extent = canvas.extent()
+
+        detected_classes = set()
+
+        for r in results:
+            for i, box in enumerate(r.boxes.xyxy):
+                x_min, y_min, x_max, y_max = box.tolist()
+
+                x1 = extent.xMinimum() + (x_min / width) * extent.width()
+                y1 = extent.yMaximum() - (y_min / height) * extent.height()
+                x2 = extent.xMinimum() + (x_max / width) * extent.width()
+                y2 = extent.yMaximum() - (y_max / height) * extent.height()
+
+                class_id = int(r.boxes.cls[i].item())
+                conf = float(r.boxes.conf[i].item())
+
+                if conf < 0.5:
+                    continue
+
+                class_name = r.names[class_id]
+                detected_classes.add(class_name)
+
+                feat = QgsFeature()
+                feat.setGeometry(
+                    QgsGeometry.fromPolygonXY(
+                        [
+                            [
+                                QgsPointXY(x1, y1),
+                                QgsPointXY(x2, y1),
+                                QgsPointXY(x2, y2),
+                                QgsPointXY(x1, y2),
+                                QgsPointXY(x1, y1),
+                            ]
+                        ]
+                    )
+                )
+                feat.setAttributes([class_name])
+                pr.addFeature(feat)
+
+        layer.updateExtents()
+
+        categories = []
+        for class_name in detected_classes:
+            for class_id, color_name in self.class_colors.items():
+                if r.names[class_id] == class_name:
+                    symbol = QgsFillSymbol.createSimple(
+                        {
+                            "color": "0,0,0,0",
+                            "outline_color": color_name,
+                            "outline_width": "1.0",
+                        }
+                    )
+                    cat = QgsRendererCategory(class_name, symbol, class_name)
+                    categories.append(cat)
+
+        if categories:
+            old_renderer = layer.renderer()
+            if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
+                for cat in old_renderer.categories():
+                    if cat.value() not in [c.value() for c in categories]:
+                        categories.append(cat)
+
+            renderer = QgsCategorizedSymbolRenderer("class", categories)
+            layer.setRenderer(renderer)
+
+        layer.triggerRepaint()
