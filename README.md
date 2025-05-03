@@ -7,3 +7,23 @@ QGIS YOLO Plugin is a QGIS extension designed to integrate **YOLOv8 models** for
 Currently, the project includes models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
 - **L6** – Large YOLOv8 model  
 - **Y9** – Small YOLOv8 model  
+
+## Installation & Requirements
+
+### QGIS Environment:
+This plugin is built for **QGIS** using the **OSGeo4W** installation environment, which provides a comprehensive set of open-source tools for GIS processing. Ensure you are using **QGIS** installed via OSGeo4W for compatibility.
+
+### Dependencies:
+To run the plugin, you need to install the `ultralytics` library, which provides the YOLOv8 model functionality.
+
+### Steps to Install:
+1. Open the **OSGeo4W Shell** (found in your QGIS installation directory).
+2. Install `ultralytics` by running the following command:
+   ```bash
+   pip install ultralytics
+   ```
+3. Copy the yolo_plugin folder from GitHub into the following directory:
+    ```bash
+    C:\Users\{user_name}\AppData\Roaming\QGIS\QGIS3\profiles\default\pytho\plugins
+    ```
+    Replace `{user_name}` with your actual Windows username.
