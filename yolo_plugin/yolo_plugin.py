@@ -35,6 +35,7 @@ from qgis.core import (
     QgsPointXY,
     QgsProject,
     QgsRendererCategory,
+    QgsVectorFileWriter,
     QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QMetaType
@@ -136,6 +137,35 @@ class YOLOPlugin:
         filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
         if filename:
             self.dlg.lineEdit.setText(filename)
+
+    def save_layer(self):
+        old_layer = QgsProject.instance().mapLayersByName("YOLO Detections")[0]
+        project_path = QgsProject.instance().fileName()
+        if not project_path:
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                "Project not saved. Please save the project to store the YOLO detection layer.",
+                level=1,
+                duration=10,
+            )
+            return
+
+        project_dir = os.path.dirname(project_path)
+        shp_path = os.path.join(project_dir, "yolo_detections.shp")
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "ESRI Shapefile"
+        context = QgsProject.instance().transformContext()
+
+        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(
+            old_layer, shp_path, context, options
+        )
+
+        if new_file:
+            new_layer = QgsVectorLayer(shp_path, old_layer.name(), "ogr")
+            new_layer.setRenderer(old_layer.renderer().clone())
+            QgsProject.instance().addMapLayer(new_layer)
+            QgsProject.instance().removeMapLayer(old_layer.id())
 
     def detect_objects(self):
         if not self.model_path or not os.path.exists(self.model_path):
@@ -247,6 +277,7 @@ class YOLOPlugin:
             layer.setRenderer(renderer)
 
         layer.triggerRepaint()
+        self.save_layer()
         self.iface.messageBar().pushMessage(
             "Success", f"Detected {len(features)} object(s).", level=0, duration=5
         )
