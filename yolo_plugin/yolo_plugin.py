@@ -138,6 +138,12 @@ class YOLOPlugin:
             self.dlg.lineEdit.setText(filename)
 
     def detect_objects(self):
+        if not self.model_path or not os.path.exists(self.model_path):
+            self.iface.messageBar().pushMessage(
+                "Error", "Model path is invalid", level=2, duration=5
+            )
+            return
+
         canvas = self.iface.mapCanvas()
         img = canvas.grab().toImage()
 
