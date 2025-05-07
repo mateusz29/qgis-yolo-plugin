@@ -70,6 +70,29 @@
        </property>
       </layout>
      </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_confidence">
+       <property name="text">
+        <string>Confidence threshold (0–1):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QDoubleSpinBox" name="spinBox_confidence">
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>1.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.050000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.500000000000000</double>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

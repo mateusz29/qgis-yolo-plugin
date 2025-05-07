@@ -129,6 +129,7 @@ class YOLOPlugin:
                 self.last_model_path = self.model_path
 
             self.class_colors = self.dlg.get_class_colors()
+            self.conf_threshold = self.dlg.get_confidence_threshold()
             self.detect_objects()
 
     def select_model_path(self):
@@ -151,29 +152,18 @@ class YOLOPlugin:
 
         results = self.model.predict(img_rgb)
 
-        layer = None
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "YOLO Detections":
-                layer = lyr
-                break
-
-        if layer is None:
-            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
-            pr = layer.dataProvider()
-            fields = QgsFields()
-            fields.append(QgsField("class", QMetaType.Type.QString))
-            pr.addAttributes(fields)
-            layer.updateFields()
-            QgsProject.instance().addMapLayer(layer)
-        else:
-            pr = layer.dataProvider()
-
         extent = canvas.extent()
 
+        features = []
         detected_classes = set()
 
         for r in results:
             for i, box in enumerate(r.boxes.xyxy):
+                conf = float(r.boxes.conf[i].item())
+
+                if conf < self.conf_threshold:
+                    continue
+
                 x_min, y_min, x_max, y_max = box.tolist()
 
                 x1 = extent.xMinimum() + (x_min / width) * extent.width()
@@ -182,11 +172,6 @@ class YOLOPlugin:
                 y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
                 class_id = int(r.boxes.cls[i].item())
-                conf = float(r.boxes.conf[i].item())
-
-                if conf < 0.5:
-                    continue
-
                 class_name = r.names[class_id]
                 detected_classes.add(class_name)
 
@@ -205,8 +190,30 @@ class YOLOPlugin:
                     )
                 )
                 feat.setAttributes([class_name])
-                pr.addFeature(feat)
+                features.append(feat)
 
+        if not features:
+            self.iface.messageBar().pushMessage("No objects detected", level=1, duration=3)
+            return
+
+        layer = None
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr.name() == "YOLO Detections":
+                layer = lyr
+                break
+
+        if layer is None:
+            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
+            pr = layer.dataProvider()
+            fields = QgsFields()
+            fields.append(QgsField("class", QMetaType.Type.QString))
+            pr.addAttributes(fields)
+            layer.updateFields()
+            QgsProject.instance().addMapLayer(layer)
+        else:
+            pr = layer.dataProvider()
+
+        pr.addFeatures(features)
         layer.updateExtents()
 
         categories = []
@@ -234,3 +241,6 @@ class YOLOPlugin:
             layer.setRenderer(renderer)
 
         layer.triggerRepaint()
+        self.iface.messageBar().pushMessage(
+            "Success", f"Detected {len(features)} object(s).", level=0, duration=5
+        )

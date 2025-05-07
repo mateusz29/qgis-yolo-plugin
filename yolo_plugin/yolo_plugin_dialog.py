@@ -72,3 +72,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             idx: self.color_buttons[name].palette().button().color().name()
             for idx, name in enumerate(self.class_names)
         }
+
+    def get_confidence_threshold(self):
+        return self.spinBox_confidence.value()
