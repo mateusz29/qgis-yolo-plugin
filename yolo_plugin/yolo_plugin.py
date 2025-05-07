@@ -37,21 +37,26 @@ from qgis.core import (
     QgsRendererCategory,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QCoreApplication, QMetaType
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
+
+from .yolo_plugin_dialog import YOLOPluginDialog
 
 
 class YOLOPlugin:
     def __init__(self, iface):
+        self.selectedLayer = None
+        self.dlg = None
+        self.model_path = None
+        self.last_model_path = None
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.actions = []
-        self.menu = self.tr("&YOLO Plugin")
-
-        model_path = os.path.join(self.plugin_dir, "models/YOLOv8s.pt")
-        self.model = YOLO(model_path)
+        self.menu = "&YOLO Plugin"
+        self.first_start = None
+        self.model = None
 
         self.class_colors = {
             0: "red",
@@ -61,15 +66,34 @@ class YOLOPlugin:
             4: "cyan",
         }
 
-    def tr(self, message):
-        return QCoreApplication.translate("YOLOPlugin", message)
-
-    def add_action(self, icon_path, text, callback, parent=None):
+    def add_action(
+        self,
+        icon_path,
+        text,
+        callback,
+        enabled_flag=True,
+        add_to_menu=True,
+        add_to_toolbar=True,
+        status_tip=None,
+        whats_this=None,
+        parent=None,
+    ):
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
-        self.iface.addToolBarIcon(action)
-        self.iface.addPluginToMenu(self.menu, action)
+        action.setEnabled(enabled_flag)
+
+        if status_tip:
+            action.setStatusTip(status_tip)
+        if whats_this:
+            action.setWhatsThis(whats_this)
+
+        if add_to_toolbar:
+            self.iface.addToolBarIcon(action)
+
+        if add_to_menu:
+            self.iface.addPluginToMenu(self.menu, action)
+
         self.actions.append(action)
         return action
 
@@ -77,10 +101,11 @@ class YOLOPlugin:
         icon_path = ":/plugins/yolo_plugin/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr("Run YOLO detection"),
+            text="Run YOLO detection",
             callback=self.run,
             parent=self.iface.mainWindow(),
         )
+        self.first_start = True
 
     def unload(self):
         for action in self.actions:
@@ -88,7 +113,35 @@ class YOLOPlugin:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        self.detect_objects()
+        if self.first_start:
+            self.first_start = False
+            self.dlg = YOLOPluginDialog()
+
+            self.dlg.toolButton.clicked.connect(self.select_model_path)
+            layers = QgsProject.instance().layerTreeRoot().children()
+            self.dlg.comboBox.clear()
+            self.dlg.comboBox.addItems([layer.name() for layer in layers])
+
+        self.dlg.show()
+        result = self.dlg.exec_()
+
+        if result:
+            self.model_path = self.dlg.lineEdit.text()
+            selected_layer_index = self.dlg.comboBox.currentIndex()
+            self.selectedLayer = (
+                QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
+            )
+
+            if self.model is None or self.model_path != self.last_model_path:
+                self.model = YOLO(self.model_path)
+                self.last_model_path = self.model_path
+
+            self.detect_objects()
+
+    def select_model_path(self):
+        filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
+        if filename:
+            self.dlg.lineEdit.setText(filename)
 
     def detect_objects(self):
         canvas = self.iface.mapCanvas()
