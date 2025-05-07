@@ -58,14 +58,6 @@ class YOLOPlugin:
         self.first_start = None
         self.model = None
 
-        self.class_colors = {
-            0: "red",
-            1: "blue",
-            2: "orange",
-            3: "yellow",
-            4: "cyan",
-        }
-
     def add_action(
         self,
         icon_path,
@@ -136,6 +128,7 @@ class YOLOPlugin:
                 self.model = YOLO(self.model_path)
                 self.last_model_path = self.model_path
 
+            self.class_colors = self.dlg.get_class_colors()
             self.detect_objects()
 
     def select_model_path(self):
