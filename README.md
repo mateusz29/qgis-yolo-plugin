@@ -42,3 +42,5 @@ This example demonstrates expected output for planes recognition using default p
 ![input](images/example_input.png)
 
 ![output](images/example_output.png)
+
+![layers](images/layer_output.png)
