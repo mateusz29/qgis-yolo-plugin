@@ -27,3 +27,20 @@ To run the plugin, you need to install the `ultralytics` library, which provides
     C:\Users\{user_name}\AppData\Roaming\QGIS\QGIS3\profiles\default\pytho\plugins
     ```
     Replace `{user_name}` with your actual Windows username.
+
+## GUI of QGIS YOLO Plugin
+The plugin is configured to let the user define the input parameters:
+
+![GUI](images/parameters.png)
+1. Input layer - image from this layer will be processed.
+2. Path to model - selected model will be used for objects recognition.
+3. Colors for detected classes of objects - uses can define colors for each class.
+4. Confidence threshold - results with confidence below threshold will not be presented.  
+## Illustrative examples
+This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
+
+![input](images/example_input.png)
+
+![output](images/example_output.png)
+
+![layers](images/layer_output.png)
