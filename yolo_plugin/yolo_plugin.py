@@ -35,41 +35,58 @@ from qgis.core import (
     QgsPointXY,
     QgsProject,
     QgsRendererCategory,
+    QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QCoreApplication, QMetaType
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
+
+from .yolo_plugin_dialog import YOLOPluginDialog
 
 
 class YOLOPlugin:
     def __init__(self, iface):
+        self.selectedLayer = None
+        self.dlg = None
+        self.model_path = None
+        self.last_model_path = None
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.actions = []
-        self.menu = self.tr("&YOLO Plugin")
+        self.menu = "&YOLO Plugin"
+        self.first_start = None
+        self.model = None
 
-        model_path = os.path.join(self.plugin_dir, "models/YOLOv8s.pt")
-        self.model = YOLO(model_path)
-
-        self.class_colors = {
-            0: "red",
-            1: "blue",
-            2: "orange",
-            3: "yellow",
-            4: "cyan",
-        }
-
-    def tr(self, message):
-        return QCoreApplication.translate("YOLOPlugin", message)
-
-    def add_action(self, icon_path, text, callback, parent=None):
+    def add_action(
+        self,
+        icon_path,
+        text,
+        callback,
+        enabled_flag=True,
+        add_to_menu=True,
+        add_to_toolbar=True,
+        status_tip=None,
+        whats_this=None,
+        parent=None,
+    ):
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
-        self.iface.addToolBarIcon(action)
-        self.iface.addPluginToMenu(self.menu, action)
+        action.setEnabled(enabled_flag)
+
+        if status_tip:
+            action.setStatusTip(status_tip)
+        if whats_this:
+            action.setWhatsThis(whats_this)
+
+        if add_to_toolbar:
+            self.iface.addToolBarIcon(action)
+
+        if add_to_menu:
+            self.iface.addPluginToMenu(self.menu, action)
+
         self.actions.append(action)
         return action
 
@@ -77,10 +94,11 @@ class YOLOPlugin:
         icon_path = ":/plugins/yolo_plugin/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr("Run YOLO detection"),
+            text="Run YOLO detection",
             callback=self.run,
             parent=self.iface.mainWindow(),
         )
+        self.first_start = True
 
     def unload(self):
         for action in self.actions:
@@ -88,9 +106,74 @@ class YOLOPlugin:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        self.detect_objects()
+        if self.first_start:
+            self.first_start = False
+            self.dlg = YOLOPluginDialog()
+
+            self.dlg.toolButton.clicked.connect(self.select_model_path)
+            layers = QgsProject.instance().layerTreeRoot().children()
+            self.dlg.comboBox.clear()
+            self.dlg.comboBox.addItems([layer.name() for layer in layers])
+
+        self.dlg.show()
+        result = self.dlg.exec_()
+
+        if result:
+            self.model_path = self.dlg.lineEdit.text()
+            selected_layer_index = self.dlg.comboBox.currentIndex()
+            self.selectedLayer = (
+                QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
+            )
+
+            if self.model is None or self.model_path != self.last_model_path:
+                self.model = YOLO(self.model_path)
+                self.last_model_path = self.model_path
+
+            self.class_colors = self.dlg.get_class_colors()
+            self.conf_threshold = self.dlg.get_confidence_threshold()
+            self.detect_objects()
+
+    def select_model_path(self):
+        filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
+        if filename:
+            self.dlg.lineEdit.setText(filename)
+
+    def save_layer(self):
+        old_layer = QgsProject.instance().mapLayersByName("YOLO Detections")[0]
+        project_path = QgsProject.instance().fileName()
+        if not project_path:
+            self.iface.messageBar().pushMessage(
+                "Warning",
+                "Project not saved. Please save the project to store the YOLO detection layer.",
+                level=1,
+                duration=10,
+            )
+            return
+
+        project_dir = os.path.dirname(project_path)
+        shp_path = os.path.join(project_dir, "yolo_detections.shp")
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "ESRI Shapefile"
+        context = QgsProject.instance().transformContext()
+
+        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(
+            old_layer, shp_path, context, options
+        )
+
+        if new_file:
+            new_layer = QgsVectorLayer(shp_path, old_layer.name(), "ogr")
+            new_layer.setRenderer(old_layer.renderer().clone())
+            QgsProject.instance().addMapLayer(new_layer)
+            QgsProject.instance().removeMapLayer(old_layer.id())
 
     def detect_objects(self):
+        if not self.model_path or not os.path.exists(self.model_path):
+            self.iface.messageBar().pushMessage(
+                "Error", "Model path is invalid", level=2, duration=5
+            )
+            return
+
         canvas = self.iface.mapCanvas()
         img = canvas.grab().toImage()
 
@@ -105,29 +188,18 @@ class YOLOPlugin:
 
         results = self.model.predict(img_rgb)
 
-        layer = None
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "YOLO Detections":
-                layer = lyr
-                break
-
-        if layer is None:
-            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
-            pr = layer.dataProvider()
-            fields = QgsFields()
-            fields.append(QgsField("class", QMetaType.Type.QString))
-            pr.addAttributes(fields)
-            layer.updateFields()
-            QgsProject.instance().addMapLayer(layer)
-        else:
-            pr = layer.dataProvider()
-
         extent = canvas.extent()
 
+        features = []
         detected_classes = set()
 
         for r in results:
             for i, box in enumerate(r.boxes.xyxy):
+                conf = float(r.boxes.conf[i].item())
+
+                if conf < self.conf_threshold:
+                    continue
+
                 x_min, y_min, x_max, y_max = box.tolist()
 
                 x1 = extent.xMinimum() + (x_min / width) * extent.width()
@@ -136,11 +208,6 @@ class YOLOPlugin:
                 y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
                 class_id = int(r.boxes.cls[i].item())
-                conf = float(r.boxes.conf[i].item())
-
-                if conf < 0.5:
-                    continue
-
                 class_name = r.names[class_id]
                 detected_classes.add(class_name)
 
@@ -159,8 +226,30 @@ class YOLOPlugin:
                     )
                 )
                 feat.setAttributes([class_name])
-                pr.addFeature(feat)
+                features.append(feat)
 
+        if not features:
+            self.iface.messageBar().pushMessage("No objects detected", level=1, duration=3)
+            return
+
+        layer = None
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr.name() == "YOLO Detections":
+                layer = lyr
+                break
+
+        if layer is None:
+            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
+            pr = layer.dataProvider()
+            fields = QgsFields()
+            fields.append(QgsField("class", QMetaType.Type.QString))
+            pr.addAttributes(fields)
+            layer.updateFields()
+            QgsProject.instance().addMapLayer(layer)
+        else:
+            pr = layer.dataProvider()
+
+        pr.addFeatures(features)
         layer.updateExtents()
 
         categories = []
@@ -188,3 +277,7 @@ class YOLOPlugin:
             layer.setRenderer(renderer)
 
         layer.triggerRepaint()
+        self.save_layer()
+        self.iface.messageBar().pushMessage(
+            "Success", f"Detected {len(features)} object(s).", level=0, duration=5
+        )

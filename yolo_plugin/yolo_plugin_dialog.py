@@ -23,22 +23,55 @@
 """
 
 import os
+from functools import partial
 
-from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets
+from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton
 
-# This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'yolo_plugin_dialog_base.ui'))
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui")
+)
 
 
 class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(YOLOPluginDialog, self).__init__(parent)
-        # Set up the user interface from Designer through FORM_CLASS.
-        # After self.setupUi() you can access any designer object by doing
-        # self.<objectname>, and you can use autoconnect slots - see
-        # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
-        # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.class_names = ["airport", "helicopter", "oil tank", "plane", "warship"]
+        self.default_colors = {
+            "airport": "blue",
+            "helicopter": "orange",
+            "plane": "yellow",
+            "oil tank": "red",
+            "warship": "cyan",
+        }
+        self.color_buttons = {}
+        self.populate_color_pickers()
+
+    def populate_color_pickers(self):
+        for class_name in self.class_names:
+            layout = QHBoxLayout()
+            label = QLabel(class_name)
+            button = QPushButton()
+            button.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
+            button.clicked.connect(partial(self.select_color, class_name))
+            layout.addWidget(label)
+            layout.addWidget(button)
+
+            self.verticalLayout_colors.addLayout(layout)
+            self.color_buttons[class_name] = button
+
+    def select_color(self, class_name):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            self.color_buttons[class_name].setStyleSheet(f"background-color: {color.name()}")
+
+    def get_class_colors(self):
+        return {
+            idx: self.color_buttons[name].palette().button().color().name()
+            for idx, name in enumerate(self.class_names)
+        }
+
+    def get_confidence_threshold(self):
+        return self.spinBox_confidence.value()
