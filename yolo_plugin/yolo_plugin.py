@@ -39,7 +39,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QMetaType
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
 
@@ -252,17 +252,31 @@ class YOLOPlugin:
         pr.addFeatures(features)
         layer.updateExtents()
 
+        fill_enabled = self.dlg.get_fill_enabled()
+        transparency = self.dlg.get_transparency()
+        alpha = int(255 * (1 - transparency / 100))
+
         categories = []
         for class_name in detected_classes:
             for class_id, color_name in self.class_colors.items():
                 if r.names[class_id] == class_name:
-                    symbol = QgsFillSymbol.createSimple(
-                        {
-                            "color": "0,0,0,0",
-                            "outline_color": color_name,
-                            "outline_width": "1.0",
-                        }
-                    )
+                    symbol_params = {
+                        "outline_width": "1.0",
+                    }
+
+                    if fill_enabled:
+                        color_obj = QColor(color_name)
+                        symbol_params["color"] = (
+                            f"{color_obj.red()},{color_obj.green()},{color_obj.blue()},{alpha}"
+                        )
+                        symbol_params["outline_color"] = (
+                            f"{color_obj.red()},{color_obj.green()},{color_obj.blue()},{alpha}"
+                        )
+                    else:
+                        symbol_params["color"] = "0,0,0,0"
+                        symbol_params["outline_color"] = color_name
+
+                    symbol = QgsFillSymbol.createSimple(symbol_params)
                     cat = QgsRendererCategory(class_name, symbol, class_name)
                     categories.append(cat)
 

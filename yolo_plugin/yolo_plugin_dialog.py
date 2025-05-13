@@ -48,6 +48,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         }
         self.color_buttons = {}
         self.populate_color_pickers()
+        self.checkBox_fill.stateChanged.connect(self.update_transparency_enabled)
+        self.update_transparency_enabled()
 
     def populate_color_pickers(self):
         for class_name in self.class_names:
@@ -75,3 +77,12 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_confidence_threshold(self):
         return self.spinBox_confidence.value()
+
+    def get_fill_enabled(self):
+        return self.checkBox_fill.isChecked()
+
+    def get_transparency(self):
+        return self.spinBox_transparency.value()
+
+    def update_transparency_enabled(self):
+        self.spinBox_transparency.setEnabled(self.checkBox_fill.isChecked())

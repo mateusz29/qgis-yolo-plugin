@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>250</height>
+    <height>300</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -90,6 +90,43 @@
        </property>
        <property name="value">
         <double>0.500000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_fill">
+       <property name="text">
+        <string>Fill rectangles:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QCheckBox" name="checkBox_fill">
+       <property name="text">
+        <string>Use filled rectangles</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_transparency">
+       <property name="text">
+        <string>Fill transparency (0-100%):</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QSpinBox" name="spinBox_transparency">
+       <property name="suffix">
+        <string>%</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="value">
+        <number>50</number>
        </property>
       </widget>
      </item>
