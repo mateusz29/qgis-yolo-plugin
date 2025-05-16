@@ -247,8 +247,10 @@ class YOLOPlugin:
         layer.updateExtents()
 
         fill_enabled = self.dlg.get_fill_enabled()
-        transparency = self.dlg.get_transparency()
-        alpha = int(255 * (1 - transparency / 100))
+        fill_transparency = self.dlg.get_fill_transparency()
+        outline_transparency = self.dlg.get_outline_transparency()
+        fill_alpha = int(255 * (1 - fill_transparency / 100))
+        outline_alpha = int(255 * (1 - outline_transparency / 100))
 
         categories = []
         for class_name in detected_classes:
@@ -256,10 +258,12 @@ class YOLOPlugin:
 
             fill_color_obj = QColor(colors["fill"])
             outline_color_obj = QColor(colors["outline"])
-            outline_color = f"{outline_color_obj.red()},{outline_color_obj.green()},{outline_color_obj.blue()}"
+            outline_color = (
+                f"{outline_color_obj.red()},{outline_color_obj.green()},{outline_color_obj.blue()},{outline_alpha}"
+            )
 
             if fill_enabled:
-                fill_color = f"{fill_color_obj.red()},{fill_color_obj.green()},{fill_color_obj.blue()},{alpha}"
+                fill_color = f"{fill_color_obj.red()},{fill_color_obj.green()},{fill_color_obj.blue()},{fill_alpha}"
             else:
                 fill_color = "0,0,0,0"
 

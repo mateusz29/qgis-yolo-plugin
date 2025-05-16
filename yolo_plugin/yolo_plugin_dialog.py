@@ -53,8 +53,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         for class_name in self.class_names:
             layout = QHBoxLayout()
             label = QLabel(class_name)
-            outline_btn = QPushButton("Outline")
-            fill_btn = QPushButton("Fill")
+            outline_btn = QPushButton()
+            fill_btn = QPushButton()
 
             outline_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
             fill_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
@@ -89,8 +89,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def get_fill_enabled(self):
         return self.checkBox_fill.isChecked()
 
-    def get_transparency(self):
-        return self.spinBox_transparency.value()
+    def get_fill_transparency(self):
+        return self.spinBox_fill_transparency.value()
+
+    def get_outline_transparency(self):
+        return self.spinBox_outline_transparency.value()
 
     def update_transparency_enabled(self):
-        self.spinBox_transparency.setEnabled(self.checkBox_fill.isChecked())
+        self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
