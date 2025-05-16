@@ -34,8 +34,12 @@ The plugin is configured to let the user define the input parameters:
 ![GUI](images/parameters.png)
 1. Input layer - image from this layer will be processed.
 2. Path to model - selected model will be used for objects recognition.
-3. Colors for detected classes of objects - uses can define colors for each class.
+3. Class colors - user can define colors for each class.
 4. Confidence threshold - results with confidence below threshold will not be presented.  
+5. Fill rectangles - enable to draw filled rectangles for detected objects.
+6. Fill transparency - sets transparency level for filled rectangles.
+7. Outline transparency - sets transparency level for rectangle outlines.
+
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
 
