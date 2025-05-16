@@ -28,9 +28,7 @@ from functools import partial
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton
 
-FORM_CLASS, _ = uic.loadUiType(
-    os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui")
-)
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui"))
 
 
 class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
@@ -38,12 +36,12 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         """Constructor."""
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
-        self.class_names = ["airport", "helicopter", "oil tank", "plane", "warship"]
+        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship"]
         self.default_colors = {
             "airport": "blue",
             "helicopter": "orange",
             "plane": "yellow",
-            "oil tank": "red",
+            "oiltank": "red",
             "warship": "cyan",
         }
         self.color_buttons = {}
@@ -55,24 +53,34 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         for class_name in self.class_names:
             layout = QHBoxLayout()
             label = QLabel(class_name)
-            button = QPushButton()
-            button.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
-            button.clicked.connect(partial(self.select_color, class_name))
+            outline_btn = QPushButton("Outline")
+            fill_btn = QPushButton("Fill")
+
+            outline_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
+            fill_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
+
+            outline_btn.clicked.connect(partial(self.select_color, class_name, "outline"))
+            fill_btn.clicked.connect(partial(self.select_color, class_name, "fill"))
+
             layout.addWidget(label)
-            layout.addWidget(button)
+            layout.addWidget(outline_btn)
+            layout.addWidget(fill_btn)
 
             self.verticalLayout_colors.addLayout(layout)
-            self.color_buttons[class_name] = button
+            self.color_buttons[class_name] = {"outline": outline_btn, "fill": fill_btn}
 
-    def select_color(self, class_name):
+    def select_color(self, class_name, kind):
         color = QColorDialog.getColor()
         if color.isValid():
-            self.color_buttons[class_name].setStyleSheet(f"background-color: {color.name()}")
+            self.color_buttons[class_name][kind].setStyleSheet(f"background-color: {color.name()}")
 
     def get_class_colors(self):
         return {
-            idx: self.color_buttons[name].palette().button().color().name()
-            for idx, name in enumerate(self.class_names)
+            class_name: {
+                "outline": self.color_buttons[class_name]["outline"].palette().button().color().name(),
+                "fill": self.color_buttons[class_name]["fill"].palette().button().color().name(),
+            }
+            for class_name in self.class_names
         }
 
     def get_confidence_threshold(self):
