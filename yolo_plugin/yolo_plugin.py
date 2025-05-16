@@ -39,7 +39,7 @@ from qgis.core import (
     QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QMetaType
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
 
@@ -121,9 +121,7 @@ class YOLOPlugin:
         if result:
             self.model_path = self.dlg.lineEdit.text()
             selected_layer_index = self.dlg.comboBox.currentIndex()
-            self.selectedLayer = (
-                QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
-            )
+            self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
 
             if self.model is None or self.model_path != self.last_model_path:
                 self.model = YOLO(self.model_path)
@@ -157,9 +155,7 @@ class YOLOPlugin:
         options.driverName = "ESRI Shapefile"
         context = QgsProject.instance().transformContext()
 
-        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(
-            old_layer, shp_path, context, options
-        )
+        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(old_layer, shp_path, context, options)
 
         if new_file:
             new_layer = QgsVectorLayer(shp_path, old_layer.name(), "ogr")
@@ -169,9 +165,7 @@ class YOLOPlugin:
 
     def detect_objects(self):
         if not self.model_path or not os.path.exists(self.model_path):
-            self.iface.messageBar().pushMessage(
-                "Error", "Model path is invalid", level=2, duration=5
-            )
+            self.iface.messageBar().pushMessage("Error", "Model path is invalid", level=2, duration=5)
             return
 
         canvas = self.iface.mapCanvas()
@@ -252,19 +246,36 @@ class YOLOPlugin:
         pr.addFeatures(features)
         layer.updateExtents()
 
+        fill_enabled = self.dlg.get_fill_enabled()
+        fill_transparency = self.dlg.get_fill_transparency()
+        outline_transparency = self.dlg.get_outline_transparency()
+        fill_alpha = int(255 * (1 - fill_transparency / 100))
+        outline_alpha = int(255 * (1 - outline_transparency / 100))
+
         categories = []
         for class_name in detected_classes:
-            for class_id, color_name in self.class_colors.items():
-                if r.names[class_id] == class_name:
-                    symbol = QgsFillSymbol.createSimple(
-                        {
-                            "color": "0,0,0,0",
-                            "outline_color": color_name,
-                            "outline_width": "1.0",
-                        }
-                    )
-                    cat = QgsRendererCategory(class_name, symbol, class_name)
-                    categories.append(cat)
+            colors = self.class_colors.get(class_name)
+
+            fill_color_obj = QColor(colors["fill"])
+            outline_color_obj = QColor(colors["outline"])
+            outline_color = (
+                f"{outline_color_obj.red()},{outline_color_obj.green()},{outline_color_obj.blue()},{outline_alpha}"
+            )
+
+            if fill_enabled:
+                fill_color = f"{fill_color_obj.red()},{fill_color_obj.green()},{fill_color_obj.blue()},{fill_alpha}"
+            else:
+                fill_color = "0,0,0,0"
+
+            symbol_params = {
+                "outline_width": "1.0",
+                "color": fill_color,
+                "outline_color": outline_color,
+            }
+
+            symbol = QgsFillSymbol.createSimple(symbol_params)
+            cat = QgsRendererCategory(class_name, symbol, class_name)
+            categories.append(cat)
 
         if categories:
             old_renderer = layer.renderer()
@@ -278,6 +289,4 @@ class YOLOPlugin:
 
         layer.triggerRepaint()
         self.save_layer()
-        self.iface.messageBar().pushMessage(
-            "Success", f"Detected {len(features)} object(s).", level=0, duration=5
-        )
+        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=5)
