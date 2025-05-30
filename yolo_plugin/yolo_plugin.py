@@ -38,7 +38,7 @@ from qgis.core import (
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QMetaType, QSettings
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
@@ -111,6 +111,10 @@ class YOLOPlugin:
         self.dlg.comboBox.clear()
         self.dlg.comboBox.addItems([layer.name() for layer in layers])
 
+        settings = QSettings()
+        saved_path = settings.value("YOLOPlugin/model_path", "", type=str)
+        self.dlg.lineEdit.setText(saved_path)
+
         self.dlg.show()
         result = self.dlg.exec_()
 
@@ -131,6 +135,7 @@ class YOLOPlugin:
         filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
         if filename:
             self.dlg.lineEdit.setText(filename)
+            QSettings().setValue("YOLOPlugin/model_path", filename)
 
     def save_layer(self):
         old_layer = QgsProject.instance().mapLayersByName("YOLO Detections")[0]
