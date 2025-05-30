@@ -24,7 +24,7 @@ To run the plugin, you need to install the `ultralytics` library, which provides
    ```
 3. Copy the yolo_plugin folder from GitHub into the following directory:
     ```bash
-    C:\Users\{user_name}\AppData\Roaming\QGIS\QGIS3\profiles\default\pytho\plugins
+    C:\Users\{user_name}\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins
     ```
     Replace `{user_name}` with your actual Windows username.
 
@@ -48,3 +48,36 @@ This example demonstrates expected output for planes recognition using default p
 ![output](images/example_output.png)
 
 ![layers](images/layer_output.png)
+
+## Known Issues
+
+### Invalid Data Source / Unexpected QGIS Launch
+
+On some systems, running the plugin may trigger errors like:
+
+- `Invalid Data Source: C:\Users\{username}\--json is not a valid or recognized data source.`
+- `Invalid Data Source: C:\Users\{username}\AppData\Roaming\Python\Python312\site-packages\cpuinfo\cpuinfo.py is not a valid or recognized data source.`
+
+Additionally, a second QGIS instance might launch unexpectedly. This issue is related to the `cpuinfo` library used internally by `ultralytics`, particularly when calling `get_cpu_info()`.  
+
+#### Temporary Workaround
+
+You can patch the issue by modifying the `ultralytics/engine/predictor.py` file. Locate the `setup_model` function and change the `device` assignment line:
+
+```python
+def setup_model(self, model, verbose=True):
+    self.model = AutoBackend(
+        weights=model or self.args.model,
+        device=torch.device("cpu"),  # <---
+        dnn=self.args.dnn,
+        data=self.args.data,
+        fp16=self.args.half,
+        batch=self.args.batch,
+        fuse=True,
+        verbose=verbose,
+    )
+```
+
+This forces the model to run on CPU, avoiding the call to get_cpu_info() that triggers the issue.
+
+For more context, see the related [Ultralytics GitHub issue #8609](https://github.com/ultralytics/ultralytics/issues/8609).
