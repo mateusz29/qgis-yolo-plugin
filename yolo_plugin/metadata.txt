@@ -10,7 +10,7 @@ version=0.1
 author=John doe
 email=john.doe@email.com
 
-about=This plugin uses a trained YOLO model to detect objects like planes, airports, warships, helicopters and oil tankers directly from satellite imagery. Simply select your map view, run detection, and view results as scalable vector layers with labels and confidence scores.
+about=This plugin uses a trained YOLO model to detect objects like planes, airports, warships, helicopters and oil tankers directly from satellite imagery. Simply select your map view, run detection, and view results as scalable vector layers with labels and confidence scores. Icon: Miscellaneous icons created by afif fudin - https://www.flaticon.com/free-icons/miscellaneous (via Flaticon)
 
 tracker=https://github.com/mateusz29/qgis-yolo-plugin/issues
 repository=https://github.com/mateusz29/qgis-yolo-plugin

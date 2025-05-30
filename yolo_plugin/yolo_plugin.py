@@ -90,7 +90,7 @@ class YOLOPlugin:
         return action
 
     def initGui(self):
-        icon_path = ":/plugins/yolo_plugin/icon.png"
+        icon_path = f"{self.plugin_dir}/icon.png"
         self.add_action(
             icon_path,
             text="Run YOLO detection",
