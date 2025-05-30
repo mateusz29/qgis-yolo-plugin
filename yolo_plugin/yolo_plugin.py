@@ -56,7 +56,6 @@ class YOLOPlugin:
         self.plugin_dir = os.path.dirname(__file__)
         self.actions = []
         self.menu = "&YOLO Plugin"
-        self.first_start = None
         self.model = None
 
     def add_action(
@@ -98,7 +97,6 @@ class YOLOPlugin:
             callback=self.run,
             parent=self.iface.mainWindow(),
         )
-        self.first_start = True
 
     def unload(self):
         for action in self.actions:
@@ -106,14 +104,12 @@ class YOLOPlugin:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        if self.first_start:
-            self.first_start = False
-            self.dlg = YOLOPluginDialog()
+        self.dlg = YOLOPluginDialog()
 
-            self.dlg.toolButton.clicked.connect(self.select_model_path)
-            layers = QgsProject.instance().layerTreeRoot().children()
-            self.dlg.comboBox.clear()
-            self.dlg.comboBox.addItems([layer.name() for layer in layers])
+        self.dlg.toolButton.clicked.connect(self.select_model_path)
+        layers = QgsProject.instance().layerTreeRoot().children()
+        self.dlg.comboBox.clear()
+        self.dlg.comboBox.addItems([layer.name() for layer in layers])
 
         self.dlg.show()
         result = self.dlg.exec_()
