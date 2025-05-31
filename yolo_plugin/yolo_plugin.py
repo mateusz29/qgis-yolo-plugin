@@ -60,6 +60,7 @@ class YOLOPlugin:
         self.actions = []
         self.menu = "&YOLO Plugin"
         self.model = None
+        self.last_selected_layer_name = None
 
     def add_action(
         self,
@@ -114,8 +115,13 @@ class YOLOPlugin:
             self.dlg.toolButton.clicked.connect(self.select_model_path)
 
         layers = QgsProject.instance().layerTreeRoot().children()
+        layer_names = [layer.name() for layer in layers]
         self.dlg.comboBox.clear()
-        self.dlg.comboBox.addItems([layer.name() for layer in layers])
+        self.dlg.comboBox.addItems(layer_names)
+
+        if self.last_selected_layer_name and self.last_selected_layer_name in layer_names:
+            index = layer_names.index(self.last_selected_layer_name)
+            self.dlg.comboBox.setCurrentIndex(index)
 
         self.dlg.show()
         result = self.dlg.exec_()
@@ -124,6 +130,7 @@ class YOLOPlugin:
             self.model_path = self.dlg.lineEdit.text()
             selected_layer_index = self.dlg.comboBox.currentIndex()
             self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
+            self.last_selected_layer_name = self.selectedLayer.name()
 
             if self.model is None or self.model_path != self.last_model_path:
                 self.model = YOLO(self.model_path)
