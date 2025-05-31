@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -54,6 +54,23 @@
       <widget class="QComboBox" name="comboBox"/>
      </item>
      <item row="2" column="0">
+      <widget class="QLabel" name="label_layer_option">
+       <property name="text">
+        <string>Layer option:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QCheckBox" name="checkBox_new_layer">
+       <property name="text">
+        <string>Create new layer for each detection</string>
+       </property>
+       <property name="toolTip">
+        <string>When checked, creates a new layer with timestamp for each detection run. When unchecked, adds all detections to a single layer.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
       <widget class="QLabel" name="label_colors">
        <property name="text">
         <string>Set colors for classes:</string>
@@ -63,7 +80,7 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="3" column="1">
       <layout class="QVBoxLayout" name="verticalLayout_colors">
        <property name="spacing">
         <number>4</number>
@@ -108,14 +125,14 @@
        </item>
       </layout>
      </item>
-     <item row="3" column="0">
+     <item row="4" column="0">
       <widget class="QLabel" name="label_confidence">
        <property name="text">
         <string>Confidence threshold (0–1):</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
+     <item row="4" column="1">
       <widget class="QDoubleSpinBox" name="spinBox_confidence">
        <property name="minimum">
         <double>0.000000000000000</double>
@@ -131,28 +148,28 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
+     <item row="5" column="0">
       <widget class="QLabel" name="label_fill">
        <property name="text">
         <string>Fill rectangles:</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
+     <item row="5" column="1">
       <widget class="QCheckBox" name="checkBox_fill">
        <property name="text">
         <string>Use filled rectangles</string>
        </property>
       </widget>
      </item>
-     <item row="5" column="0">
+     <item row="6" column="0">
       <widget class="QLabel" name="label__fill_transparency">
        <property name="text">
         <string>Fill transparency (0-100%):</string>
        </property>
       </widget>
      </item>
-     <item row="5" column="1">
+     <item row="6" column="1">
       <widget class="QSpinBox" name="spinBox_fill_transparency">
        <property name="suffix">
         <string>%</string>
@@ -168,14 +185,14 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="0">
+     <item row="7" column="0">
       <widget class="QLabel" name="label_outline_transparency">
        <property name="text">
         <string>Outline transparency (0-100%):</string>
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
+     <item row="7" column="1">
       <widget class="QSpinBox" name="spinBox_outline_transparency">
        <property name="suffix">
         <string>%</string>

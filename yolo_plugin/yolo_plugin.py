@@ -32,14 +32,16 @@ from qgis.core import (
     QgsFields,
     QgsFillSymbol,
     QgsGeometry,
+    QgsMapRendererCustomPainterJob,
+    QgsMapSettings,
     QgsPointXY,
     QgsProject,
     QgsRendererCategory,
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QMetaType
-from qgis.PyQt.QtGui import QColor, QIcon
+from qgis.PyQt.QtCore import QMetaType, QSettings, QSize
+from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
 
@@ -54,9 +56,11 @@ class YOLOPlugin:
         self.last_model_path = None
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
+        self.first_start = None
         self.actions = []
         self.menu = "&YOLO Plugin"
         self.model = None
+        self.last_selected_layer_name = None
 
     def add_action(
         self,
@@ -90,13 +94,14 @@ class YOLOPlugin:
         return action
 
     def initGui(self):
-        icon_path = ":/plugins/yolo_plugin/icon.png"
+        icon_path = f"{self.plugin_dir}/icon.png"
         self.add_action(
             icon_path,
             text="Run YOLO detection",
             callback=self.run,
             parent=self.iface.mainWindow(),
         )
+        self.first_start = True
 
     def unload(self):
         for action in self.actions:
@@ -104,12 +109,19 @@ class YOLOPlugin:
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        self.dlg = YOLOPluginDialog()
+        if self.first_start:
+            self.first_start = False
+            self.dlg = YOLOPluginDialog()
+            self.dlg.toolButton.clicked.connect(self.select_model_path)
 
-        self.dlg.toolButton.clicked.connect(self.select_model_path)
         layers = QgsProject.instance().layerTreeRoot().children()
+        layer_names = [layer.name() for layer in layers]
         self.dlg.comboBox.clear()
-        self.dlg.comboBox.addItems([layer.name() for layer in layers])
+        self.dlg.comboBox.addItems(layer_names)
+
+        if self.last_selected_layer_name and self.last_selected_layer_name in layer_names:
+            index = layer_names.index(self.last_selected_layer_name)
+            self.dlg.comboBox.setCurrentIndex(index)
 
         self.dlg.show()
         result = self.dlg.exec_()
@@ -118,6 +130,7 @@ class YOLOPlugin:
             self.model_path = self.dlg.lineEdit.text()
             selected_layer_index = self.dlg.comboBox.currentIndex()
             self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
+            self.last_selected_layer_name = self.selectedLayer.name()
 
             if self.model is None or self.model_path != self.last_model_path:
                 self.model = YOLO(self.model_path)
@@ -125,15 +138,16 @@ class YOLOPlugin:
 
             self.class_colors = self.dlg.get_class_colors()
             self.conf_threshold = self.dlg.get_confidence_threshold()
+            self.create_new_layer = self.dlg.get_create_new_layer()
             self.detect_objects()
 
     def select_model_path(self):
         filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
         if filename:
             self.dlg.lineEdit.setText(filename)
+            QSettings().setValue("YOLOPlugin/model_path", filename)
 
-    def save_layer(self):
-        old_layer = QgsProject.instance().mapLayersByName("YOLO Detections")[0]
+    def save_layer(self, layer):
         project_path = QgsProject.instance().fileName()
         if not project_path:
             self.iface.messageBar().pushMessage(
@@ -145,27 +159,87 @@ class YOLOPlugin:
             return
 
         project_dir = os.path.dirname(project_path)
-        shp_path = os.path.join(project_dir, "yolo_detections.shp")
+        base_name = layer.name().replace(" ", "_").lower()
+        shp_path = os.path.join(project_dir, f"{base_name}.shp")
 
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.driverName = "ESRI Shapefile"
         context = QgsProject.instance().transformContext()
 
-        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(old_layer, shp_path, context, options)
+        _, _, new_file, _ = QgsVectorFileWriter.writeAsVectorFormatV3(layer, shp_path, context, options)
 
         if new_file:
-            new_layer = QgsVectorLayer(shp_path, old_layer.name(), "ogr")
-            new_layer.setRenderer(old_layer.renderer().clone())
+            new_layer = QgsVectorLayer(shp_path, layer.name(), "ogr")
+            new_layer.setRenderer(layer.renderer().clone())
             QgsProject.instance().addMapLayer(new_layer)
-            QgsProject.instance().removeMapLayer(old_layer.id())
+            QgsProject.instance().removeMapLayer(layer.id())
+
+    def get_or_create_layer(self):
+        if self.create_new_layer:
+            existing_numbers = []
+            for lyr in QgsProject.instance().mapLayers().values():
+                if lyr.name().startswith("YOLO Detections "):
+                    try:
+                        num = int(lyr.name().split(" ")[-1])
+                        existing_numbers.append(num)
+                    except ValueError:
+                        pass
+            next_num = 1 if not existing_numbers else max(existing_numbers) + 1
+            layer_name = f"YOLO Detections {next_num}"
+
+            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", layer_name, "memory")
+            pr = layer.dataProvider()
+            fields = QgsFields()
+            fields.append(QgsField("class", QMetaType.Type.QString))
+            pr.addAttributes(fields)
+            layer.updateFields()
+            QgsProject.instance().addMapLayer(layer)
+            return layer
+        else:
+            layer = None
+            for lyr in QgsProject.instance().mapLayers().values():
+                if lyr.name() == "YOLO Detections 1":
+                    layer = lyr
+                    break
+
+            if layer is None:
+                layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections 1", "memory")
+                pr = layer.dataProvider()
+                fields = QgsFields()
+                fields.append(QgsField("class", QMetaType.Type.QString))
+                pr.addAttributes(fields)
+                layer.updateFields()
+                QgsProject.instance().addMapLayer(layer)
+
+            return layer
+
+    def render_layer_to_image(self, layer):
+        canvas = self.iface.mapCanvas()
+        extent = canvas.extent()
+
+        settings = QgsMapSettings()
+        settings.setExtent(extent)
+        settings.setOutputSize(QSize(canvas.width(), canvas.height()))
+        settings.setDestinationCrs(canvas.mapSettings().destinationCrs())
+        settings.setLayers([layer])
+
+        image = QImage(canvas.width(), canvas.height(), QImage.Format_ARGB32_Premultiplied)
+        image.fill(0)
+
+        painter = QPainter(image)
+        job = QgsMapRendererCustomPainterJob(settings, painter)
+        job.start()
+        job.waitForFinished()
+        painter.end()
+
+        return image
 
     def detect_objects(self):
         if not self.model_path or not os.path.exists(self.model_path):
             self.iface.messageBar().pushMessage("Error", "Model path is invalid", level=2, duration=5)
             return
 
-        canvas = self.iface.mapCanvas()
-        img = canvas.grab().toImage()
+        img = self.render_layer_to_image(self.selectedLayer)
 
         width = img.width()
         height = img.height()
@@ -178,7 +252,7 @@ class YOLOPlugin:
 
         results = self.model.predict(img_rgb)
 
-        extent = canvas.extent()
+        extent = self.iface.mapCanvas().extent()
 
         features = []
         detected_classes = set()
@@ -222,22 +296,8 @@ class YOLOPlugin:
             self.iface.messageBar().pushMessage("No objects detected", level=1, duration=3)
             return
 
-        layer = None
-        for lyr in QgsProject.instance().mapLayers().values():
-            if lyr.name() == "YOLO Detections":
-                layer = lyr
-                break
-
-        if layer is None:
-            layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections", "memory")
-            pr = layer.dataProvider()
-            fields = QgsFields()
-            fields.append(QgsField("class", QMetaType.Type.QString))
-            pr.addAttributes(fields)
-            layer.updateFields()
-            QgsProject.instance().addMapLayer(layer)
-        else:
-            pr = layer.dataProvider()
+        layer = self.get_or_create_layer()
+        pr = layer.dataProvider()
 
         pr.addFeatures(features)
         layer.updateExtents()
@@ -274,15 +334,16 @@ class YOLOPlugin:
             categories.append(cat)
 
         if categories:
-            old_renderer = layer.renderer()
-            if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
-                for cat in old_renderer.categories():
-                    if cat.value() not in [c.value() for c in categories]:
-                        categories.append(cat)
+            if not self.create_new_layer:
+                old_renderer = layer.renderer()
+                if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
+                    for cat in old_renderer.categories():
+                        if cat.value() not in [c.value() for c in categories]:
+                            categories.append(cat)
 
             renderer = QgsCategorizedSymbolRenderer("class", categories)
             layer.setRenderer(renderer)
 
         layer.triggerRepaint()
-        self.save_layer()
+        self.save_layer(layer)
         self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=5)
