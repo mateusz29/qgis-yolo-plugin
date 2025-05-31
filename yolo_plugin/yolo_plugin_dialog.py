@@ -95,5 +95,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def get_outline_transparency(self):
         return self.spinBox_outline_transparency.value()
 
+    def get_create_new_layer(self):
+        return self.checkBox_new_layer.isChecked()
+
     def update_transparency_enabled(self):
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
