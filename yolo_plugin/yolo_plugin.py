@@ -23,7 +23,6 @@
 """
 
 import os
-from datetime import datetime
 
 import numpy as np
 from qgis.core import (
@@ -33,14 +32,16 @@ from qgis.core import (
     QgsFields,
     QgsFillSymbol,
     QgsGeometry,
+    QgsMapRendererCustomPainterJob,
+    QgsMapSettings,
     QgsPointXY,
     QgsProject,
     QgsRendererCategory,
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QMetaType, QSettings
-from qgis.PyQt.QtGui import QColor, QIcon
+from qgis.PyQt.QtCore import QMetaType, QSettings, QSize
+from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
 from qgis.PyQt.QtWidgets import QAction, QFileDialog
 from ultralytics import YOLO
 
@@ -205,13 +206,33 @@ class YOLOPlugin:
 
             return layer
 
+    def render_layer_to_image(self, layer):
+        canvas = self.iface.mapCanvas()
+        extent = canvas.extent()
+
+        settings = QgsMapSettings()
+        settings.setExtent(extent)
+        settings.setOutputSize(QSize(canvas.width(), canvas.height()))
+        settings.setDestinationCrs(canvas.mapSettings().destinationCrs())
+        settings.setLayers([layer])
+
+        image = QImage(canvas.width(), canvas.height(), QImage.Format_ARGB32_Premultiplied)
+        image.fill(0)
+
+        painter = QPainter(image)
+        job = QgsMapRendererCustomPainterJob(settings, painter)
+        job.start()
+        job.waitForFinished()
+        painter.end()
+
+        return image
+
     def detect_objects(self):
         if not self.model_path or not os.path.exists(self.model_path):
             self.iface.messageBar().pushMessage("Error", "Model path is invalid", level=2, duration=5)
             return
 
-        canvas = self.iface.mapCanvas()
-        img = canvas.grab().toImage()
+        img = self.render_layer_to_image(self.selectedLayer)
 
         width = img.width()
         height = img.height()
@@ -224,7 +245,7 @@ class YOLOPlugin:
 
         results = self.model.predict(img_rgb)
 
-        extent = canvas.extent()
+        extent = self.iface.mapCanvas().extent()
 
         features = []
         detected_classes = set()
