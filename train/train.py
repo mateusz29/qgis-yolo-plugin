@@ -13,7 +13,13 @@ def train_yolo_model():
 
     model = YOLO(MODEL_NAME)
 
-    _ = model.train(data=DATASET_YAML, imgsz=IMAGE_SIZE, epochs=EPOCHS, batch=BATCH_SIZE, patience=PATIENCE)
+    _ = model.train(
+        data=DATASET_YAML,
+        imgsz=IMAGE_SIZE,
+        epochs=EPOCHS,
+        batch=BATCH_SIZE,
+        patience=PATIENCE,
+    )
 
 
 def test_yolo_model():
