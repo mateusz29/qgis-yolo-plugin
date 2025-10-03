@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-DATASET_YAML = "dataset/DOTANA.yaml"
+DATASET_YAML = "dataset/ShipRSImageNet.yaml"
 
 
 def train_yolo_model():
@@ -23,7 +23,7 @@ def train_yolo_model():
 
 
 def test_yolo_model():
-    model = YOLO("../models/yolo11s_best.pt")
+    model = YOLO("../models/ships_yolo11s_best.pt")
 
     _ = model.val(data=DATASET_YAML, split="test", name="test", softnms=True)
 

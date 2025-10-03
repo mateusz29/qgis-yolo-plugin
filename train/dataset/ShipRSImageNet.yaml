@@ -1,5 +1,5 @@
 #The dataset configuration file for SHIPS.
-path: SHIPS/
+path: ShipRSImageNet/
 
 train: train/images
 val: valid/images
