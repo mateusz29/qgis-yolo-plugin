@@ -1,0 +1,14 @@
+#The dataset configuration file for SHIPS.
+path: ShipRSImageNet/
+
+train: train/images
+val: valid/images
+test: test/images
+
+#The number of classes in the dataset.
+nc: 2
+
+#The names of the classes in the dataset.
+names:
+  0: ship
+  1: warship

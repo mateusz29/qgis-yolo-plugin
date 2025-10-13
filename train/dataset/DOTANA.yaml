@@ -1,0 +1,17 @@
+#The dataset configuration file for DOTANA.
+path: DOTANA/
+
+train: train/images
+val: valid/images
+test: test/images
+
+#The number of classes in the dataset.
+nc: 5
+
+#The names of the classes in the dataset.
+names:
+  0: airport
+  1: helicopter
+  2: oiltank
+  3: plane
+  4: warship
