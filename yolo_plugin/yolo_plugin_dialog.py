@@ -26,7 +26,7 @@ import os
 from functools import partial
 
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton
+from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QFileDialog
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui"))
 
@@ -36,13 +36,21 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         """Constructor."""
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
-        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship"]
+        self.lineEdit_model2.setEnabled(False)
+        self.toolButton_model2.setEnabled(False)
+        self.checkBox_run_multiple.stateChanged.connect(
+            lambda state: self.set_multiple_models_enabled(state == 2)
+        )
+        self.toolButton_model1.clicked.connect(self.select_model_path)
+        self.toolButton_model2.clicked.connect(self.select_model_path2)
+        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship", "ship"]
         self.default_colors = {
             "airport": "blue",
             "helicopter": "orange",
             "plane": "yellow",
             "oiltank": "red",
             "warship": "cyan",
+            "ship": "magenta"
         }
         self.color_buttons = {}
         self.populate_color_pickers()
@@ -100,3 +108,24 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def update_transparency_enabled(self):
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
+
+    def select_model_path(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", "", "*.pt")
+        if filename:
+            self.lineEdit_model1.setText(filename)
+
+    def select_model_path2(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Select second YOLO Model", "", "*.pt")
+        if filename:
+            self.lineEdit_model2.setText(filename)
+
+    def set_multiple_models_enabled(self, enabled):
+        self.lineEdit_model2.setEnabled(enabled)
+        self.toolButton_model2.setEnabled(enabled)
+
+    def get_second_model_path(self):
+        return self.lineEdit_model2.text()
+
+    def get_run_multiple(self):
+        return self.checkBox_run_multiple.isChecked()
+
