@@ -40,9 +40,9 @@ from qgis.core import (
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QMetaType, QSettings, QSize
+from qgis.PyQt.QtCore import QMetaType, QSize
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
-from qgis.PyQt.QtWidgets import QAction, QFileDialog
+from qgis.PyQt.QtWidgets import QAction
 from ultralytics import YOLO
 
 from .yolo_plugin_dialog import YOLOPluginDialog
@@ -112,8 +112,7 @@ class YOLOPlugin:
         if self.first_start:
             self.first_start = False
             self.dlg = YOLOPluginDialog()
-            self.dlg.toolButton.clicked.connect(self.select_model_path)
-
+            
         layers = QgsProject.instance().layerTreeRoot().children()
         layer_names = [layer.name() for layer in layers]
         self.dlg.comboBox.clear()
@@ -127,7 +126,7 @@ class YOLOPlugin:
         result = self.dlg.exec_()
 
         if result:
-            self.model_path = self.dlg.lineEdit.text()
+            self.model_path = self.dlg.lineEdit_model1.text()
             selected_layer_index = self.dlg.comboBox.currentIndex()
             self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
             self.last_selected_layer_name = self.selectedLayer.name()
@@ -139,13 +138,13 @@ class YOLOPlugin:
             self.class_colors = self.dlg.get_class_colors()
             self.conf_threshold = self.dlg.get_confidence_threshold()
             self.create_new_layer = self.dlg.get_create_new_layer()
+            self.models_to_run = [self.dlg.lineEdit_model1.text()]
+            if self.dlg.get_run_multiple():
+                second_model = self.dlg.get_second_model_path()
+                if second_model:
+                    self.models_to_run.append(second_model)
             self.detect_objects()
 
-    def select_model_path(self):
-        filename, _ = QFileDialog.getOpenFileName(self.dlg, "Select YOLO Model", "", "*.pt")
-        if filename:
-            self.dlg.lineEdit.setText(filename)
-            QSettings().setValue("YOLOPlugin/model_path", filename)
 
     def save_layer(self, layer):
         project_path = QgsProject.instance().fileName()
@@ -250,47 +249,55 @@ class YOLOPlugin:
 
         img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
 
-        results = self.model.predict(img_rgb)
+        all_results = []
+        for m_path in getattr(self, "models_to_run", [self.model_path]):
+            if not os.path.exists(m_path):
+                self.iface.messageBar().pushMessage("Error", f"Model path invalid: {m_path}", level=2, duration=5)
+                continue
+            model = YOLO(m_path)
+            res = model.predict(img_rgb)
+            all_results.append(res)
 
         extent = self.iface.mapCanvas().extent()
 
         features = []
         detected_classes = set()
 
-        for r in results:
-            for i, box in enumerate(r.boxes.xyxy):
-                conf = float(r.boxes.conf[i].item())
+        for model_results in all_results:
+            for r in model_results:
+                for i, box in enumerate(r.boxes.xyxy):
+                    conf = float(r.boxes.conf[i].item())
 
-                if conf < self.conf_threshold:
-                    continue
+                    if conf < self.conf_threshold:
+                        continue
 
-                x_min, y_min, x_max, y_max = box.tolist()
+                    x_min, y_min, x_max, y_max = box.tolist()
 
-                x1 = extent.xMinimum() + (x_min / width) * extent.width()
-                y1 = extent.yMaximum() - (y_min / height) * extent.height()
-                x2 = extent.xMinimum() + (x_max / width) * extent.width()
-                y2 = extent.yMaximum() - (y_max / height) * extent.height()
+                    x1 = extent.xMinimum() + (x_min / width) * extent.width()
+                    y1 = extent.yMaximum() - (y_min / height) * extent.height()
+                    x2 = extent.xMinimum() + (x_max / width) * extent.width()
+                    y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
-                class_id = int(r.boxes.cls[i].item())
-                class_name = r.names[class_id]
-                detected_classes.add(class_name)
+                    class_id = int(r.boxes.cls[i].item())
+                    class_name = r.names[class_id]
+                    detected_classes.add(class_name)
 
-                feat = QgsFeature()
-                feat.setGeometry(
-                    QgsGeometry.fromPolygonXY(
-                        [
+                    feat = QgsFeature()
+                    feat.setGeometry(
+                        QgsGeometry.fromPolygonXY(
                             [
-                                QgsPointXY(x1, y1),
-                                QgsPointXY(x2, y1),
-                                QgsPointXY(x2, y2),
-                                QgsPointXY(x1, y2),
-                                QgsPointXY(x1, y1),
+                                [
+                                    QgsPointXY(x1, y1),
+                                    QgsPointXY(x2, y1),
+                                    QgsPointXY(x2, y2),
+                                    QgsPointXY(x1, y2),
+                                    QgsPointXY(x1, y1),
+                                ]
                             ]
-                        ]
+                        )
                     )
-                )
-                feat.setAttributes([class_name])
-                features.append(feat)
+                    feat.setAttributes([class_name])
+                    features.append(feat)
 
         if not features:
             self.iface.messageBar().pushMessage("No objects detected", level=1, duration=3)
