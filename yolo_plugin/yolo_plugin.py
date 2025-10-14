@@ -52,15 +52,14 @@ class YOLOPlugin:
     def __init__(self, iface):
         self.selectedLayer = None
         self.dlg = None
-        self.model_path = None
-        self.last_model_path = None
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         self.first_start = None
         self.actions = []
         self.menu = "&YOLO Plugin"
-        self.model = None
+        self.model_cache = {}
         self.last_selected_layer_name = None
+
 
     def add_action(
         self,
@@ -93,6 +92,7 @@ class YOLOPlugin:
         self.actions.append(action)
         return action
 
+
     def initGui(self):
         icon_path = f"{self.plugin_dir}/icon.png"
         self.add_action(
@@ -103,10 +103,21 @@ class YOLOPlugin:
         )
         self.first_start = True
 
+
     def unload(self):
         for action in self.actions:
             self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
+
+
+    def get_model(self, model_path):
+        if model_path not in self.model_cache:
+            if not os.path.exists(model_path):
+                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2, duration=5)
+                return None
+            self.model_cache[model_path] = YOLO(model_path)
+        return self.model_cache[model_path]
+
 
     def run(self):
         if self.first_start:
@@ -126,23 +137,20 @@ class YOLOPlugin:
         result = self.dlg.exec_()
 
         if result:
-            self.model_path = self.dlg.lineEdit_model1.text()
             selected_layer_index = self.dlg.comboBox.currentIndex()
             self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
             self.last_selected_layer_name = self.selectedLayer.name()
 
-            if self.model is None or self.model_path != self.last_model_path:
-                self.model = YOLO(self.model_path)
-                self.last_model_path = self.model_path
-
             self.class_colors = self.dlg.get_class_colors()
             self.conf_threshold = self.dlg.get_confidence_threshold()
             self.create_new_layer = self.dlg.get_create_new_layer()
+        
             self.models_to_run = [self.dlg.lineEdit_model1.text()]
             if self.dlg.get_run_multiple():
                 second_model = self.dlg.get_second_model_path()
                 if second_model:
                     self.models_to_run.append(second_model)
+
             self.detect_objects()
 
 
@@ -172,6 +180,7 @@ class YOLOPlugin:
             new_layer.setRenderer(layer.renderer().clone())
             QgsProject.instance().addMapLayer(new_layer)
             QgsProject.instance().removeMapLayer(layer.id())
+
 
     def get_or_create_layer(self):
         if self.create_new_layer:
@@ -212,6 +221,7 @@ class YOLOPlugin:
 
             return layer
 
+
     def render_layer_to_image(self, layer):
         canvas = self.iface.mapCanvas()
         extent = canvas.extent()
@@ -233,11 +243,8 @@ class YOLOPlugin:
 
         return image
 
-    def detect_objects(self):
-        if not self.model_path or not os.path.exists(self.model_path):
-            self.iface.messageBar().pushMessage("Error", "Model path is invalid", level=2, duration=5)
-            return
 
+    def detect_objects(self):
         img = self.render_layer_to_image(self.selectedLayer)
 
         width = img.width()
@@ -249,21 +256,19 @@ class YOLOPlugin:
 
         img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
 
-        all_results = []
-        for m_path in getattr(self, "models_to_run", [self.model_path]):
-            if not os.path.exists(m_path):
-                self.iface.messageBar().pushMessage("Error", f"Model path invalid: {m_path}", level=2, duration=5)
+        all_results = {}
+        for m_path in self.models_to_run:
+            model = self.get_model(m_path)
+            if not model:
                 continue
-            model = YOLO(m_path)
-            res = model.predict(img_rgb)
-            all_results.append(res)
+            all_results[m_path] = model.predict(img_rgb)
 
         extent = self.iface.mapCanvas().extent()
 
         features = []
         detected_classes = set()
 
-        for model_results in all_results:
+        for _, model_results in all_results.items():
             for r in model_results:
                 for i, box in enumerate(r.boxes.xyxy):
                     conf = float(r.boxes.conf[i].item())
