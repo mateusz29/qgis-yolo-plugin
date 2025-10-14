@@ -36,13 +36,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         """Constructor."""
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
-        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship"]
+        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship", "ship"]
         self.default_colors = {
             "airport": "blue",
             "helicopter": "orange",
             "plane": "yellow",
             "oiltank": "red",
             "warship": "cyan",
+            "ship": "magenta"
         }
         self.color_buttons = {}
         self.populate_color_pickers()
