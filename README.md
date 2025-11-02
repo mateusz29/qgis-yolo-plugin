@@ -1,12 +1,49 @@
 # QGIS YOLO Plugin
 
 ## Description
-QGIS YOLO Plugin is a QGIS extension designed to integrate **YOLOv8 models** for object detection. The initial version is based on pre-trained models, with plans to develop new models using newer versions of **YOLO**.
 
-## Models Used
-Currently, the project includes models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
+QGIS YOLO Plugin is a QGIS extension designed to integrate **YOLO models** for object detection. The plugin now supports training and inference using custom datasets, in addition to pre-trained models. The latest version supports **YOLOv11 and YOLOv12 architectures**, with multiple model sizes.
+
+The plugin allows users to detect objects from aerial and satellite imagery directly within QGIS.
+
+## Datasets and Models
+
+### Datasets
+
+1. **DOTANA (modified)** – Original dataset containing `oiltank`, `airport`, `helicopter`, and `plane`. `Warships` removed to focus on non-ship objects.
+2. **ShipRSImageNet** – Dataset containing `warships` and normal `ships`.
+
+###  Old models
+The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
 - **L6** – Large YOLOv8 model  
 - **Y9** – Small YOLOv8 model  
+
+### Trained Models
+
+Models are trained in **four sizes**: Small, Medium, Large, Extra Large.
+
+* Total of **16 trained models** (4 sizes × 2 datasets × 2 YOLO versions).
+
+The **best-performing models** (based on `mAP50-95`) are available via Google Drive: [link]
+
+| Dataset           | Model Size  | Yolo version | Soft-NMS | mAP50-95 | mAP50  |
+| ----------------- | ----------  | ----------   | -------- | -------- | -----  |
+| DOTANA (no ships) | Extra Large | 12           | No       | 0.6039   | 0.9591 |
+| DOTANA (no ships) | Extra Large | 11           | No       | 0.6030   | 0.9581 |
+| ShipRSImageNet    | Large       | 11           | No       | 0.7548   | 0.9025 |
+| ShipRSImageNet    | Small       | 11           | No       | 0.7543   | 0.9065 |
+
+## Visual Examples
+
+**DOTANA (no ships) predictions:**
+
+![DOTANA predictions](assets/dotana_no_ships_predictions.png)
+
+**ShipRSImageNet predictions:**
+
+![ShipRSImageNet predictions](assets/ships_predictions.png)
+
+These images show grids of sample images from test sets with bounding boxes and labels around detected objects.
 
 ## Installation & Requirements
 
@@ -31,23 +68,24 @@ To run the plugin, you need to install the `ultralytics` library, which provides
 ## GUI of QGIS YOLO Plugin
 The plugin is configured to let the user define the input parameters:
 
-![GUI](images/parameters.png)
-1. Input layer - image from this layer will be processed.
-2. Path to model - selected model will be used for objects recognition.
-3. Class colors - user can define colors for each class.
-4. Confidence threshold - results with confidence below threshold will not be presented.  
-5. Fill rectangles - enable to draw filled rectangles for detected objects.
-6. Fill transparency - sets transparency level for filled rectangles.
-7. Outline transparency - sets transparency level for rectangle outlines.
+![GUI](assets/parameters.png)
+1. Select a layer - image from this layer will be processed.
+2. Select model - selected model will be used for objects recognition.
+3. Multiple layers - possibilty to enable two models.
+4. Select second model - second model used for object detection.
+5. Layer option - option to create new layers for detections
+6. Class colors - user can define colors for each class.
+7. Confidence threshold - results with confidence below threshold will not be presented.  
+8. Fill rectangles - enable to draw filled rectangles for detected objects.
+9. Fill transparency - sets transparency level for filled rectangles.
+10. Outline transparency - sets transparency level for rectangle outlines.
 
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
 
-![input](images/example_input.png)
+![output](assets/example_output.png)
 
-![output](images/example_output.png)
-
-![layers](images/layer_output.png)
+![layers](assets/layer_output.png)
 
 ## Known Issues
 
