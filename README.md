@@ -13,18 +13,19 @@ The plugin allows users to detect objects from aerial and satellite imagery dire
 1. **DOTANA (modified)** – Original dataset containing `oiltank`, `airport`, `helicopter`, and `plane`. `Warships` removed to focus on non-ship objects.
 2. **ShipRSImageNet** – Dataset containing `warships` and normal `ships`.
 
-###  Old models
-The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
-- **L6** – Large YOLOv8 model  
-- **Y9** – Small YOLOv8 model  
-
 ### Trained Models
 
 Models are trained in **four sizes**: Small, Medium, Large, Extra Large.
 
 * Total of **16 trained models** (4 sizes × 2 datasets × 2 YOLO versions).
 
-The **best-performing models** (based on `mAP50-95`) are available via Google Drive: [link]
+The **best-performing models** (based on `mAP50-95`) are available via Google Drive: [link](https://mega.nz/folder/euQ1iIza#qc6S5maLXW0JNmW4tkyn8A)
+
+**Best model filenames:**
+- `DOTANA_no_ships_yolo12x.pt`
+- `DOTANA_no_ships_yolo11x.pt`
+- `ships_yolo11l.pt`
+- `ships_yolo11s.pt`
 
 | Dataset           | Model Size  | Yolo version | Soft-NMS | mAP50-95 | mAP50  |
 | ----------------- | ----------  | ----------   | -------- | -------- | -----  |
@@ -32,6 +33,11 @@ The **best-performing models** (based on `mAP50-95`) are available via Google Dr
 | DOTANA (no ships) | Extra Large | 11           | No       | 0.6030   | 0.9581 |
 | ShipRSImageNet    | Large       | 11           | No       | 0.7548   | 0.9025 |
 | ShipRSImageNet    | Small       | 11           | No       | 0.7543   | 0.9065 |
+
+###  Old models
+The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
+- **L6** – Large YOLOv8 model  
+- **Y9** – Small YOLOv8 model  
 
 ## Visual Examples
 
