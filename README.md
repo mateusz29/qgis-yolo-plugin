@@ -54,25 +54,36 @@ The project uses models from **Madajczak, A. (2023).** *Master Thesis supplement
 
 These images show grids of sample images from test sets with bounding boxes and labels around detected objects.
 
-## Installation & Requirements
+## Plugin Installation
 
-### QGIS Environment:
-This plugin is built for **QGIS** using the **OSGeo4W** installation environment, which provides a comprehensive set of open-source tools for GIS processing. Ensure you are using **QGIS** installed via OSGeo4W for compatibility.
+1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/TyoiwAwQ#auaFAyJWsfG7hUBbBu66KABVyU9Xwfy40wrMW4svvvc)**
 
-### Dependencies:
-To run the plugin, you need to install the `ultralytics` library, which provides the YOLOv8 model functionality.
+2. Run **QGIS**.
 
-### Steps to Install:
-1. Open the **OSGeo4W Shell** (found in your QGIS installation directory).
-2. Install `ultralytics` by running the following command:
+3. Open: **Plugins → Manage and Install Plugins**
+
+4. Select: **Install from ZIP**
+
+5. Choose the downloaded ZIP file.
+
+6. Click **Install Plugin**.
+
+## Requirements
+
+### QGIS Environment
+This plugin is developed and tested with **QGIS installed via OSGeo4W (Windows)**.  
+Other installations are not supported.
+
+### Python Dependency
+The plugin depends on the `ultralytics` Python library.
+
+### Install Dependency (Windows / OSGeo4W)
+
+1. Open **OSGeo4W Shell** matching your QGIS installation.
+2. Run:
    ```bash
    pip install ultralytics
    ```
-3. Copy the yolo_plugin folder from GitHub into the following directory:
-    ```bash
-    C:\Users\{user_name}\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins
-    ```
-    Replace `{user_name}` with your actual Windows username.
 
 ## GUI of QGIS YOLO Plugin
 The plugin is configured to let the user define the input parameters:
