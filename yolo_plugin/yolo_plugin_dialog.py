@@ -25,6 +25,7 @@
 import os
 from functools import partial
 
+from qgis.core import QgsSettings
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QFileDialog
 
@@ -110,14 +111,26 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
 
     def select_model_path(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", "", "*.pt")
+        settings = QgsSettings()
+        last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
+
+        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
+
         if filename:
             self.lineEdit_model1.setText(filename)
+            new_dir = os.path.dirname(filename)
+            settings.setValue("YOLOPlugin/last_model_dir", new_dir)
 
     def select_model_path2(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select second YOLO Model", "", "*.pt")
+        settings = QgsSettings()
+        last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
+
+        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
+
         if filename:
             self.lineEdit_model2.setText(filename)
+            new_dir = os.path.dirname(filename)
+            settings.setValue("YOLOPlugin/last_model_dir", new_dir)
 
     def set_multiple_models_enabled(self, enabled):
         self.lineEdit_model2.setEnabled(enabled)

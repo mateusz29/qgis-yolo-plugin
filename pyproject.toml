@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "ipywidgets>=8.1.7",
     "jupyterlab>=4.4.9",
+    "onnxruntime>=1.23.2",
     "scikit-learn>=1.7.2",
     "tqdm>=4.67.1",
     "ultralytics",

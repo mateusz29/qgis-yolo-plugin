@@ -26,6 +26,7 @@ import os
 
 import numpy as np
 from qgis.core import (
+    QgsSettings,
     QgsCategorizedSymbolRenderer,
     QgsFeature,
     QgsField,
@@ -129,17 +130,28 @@ class YOLOPlugin:
         self.dlg.comboBox.clear()
         self.dlg.comboBox.addItems(layer_names)
 
-        if self.last_selected_layer_name and self.last_selected_layer_name in layer_names:
-            index = layer_names.index(self.last_selected_layer_name)
+        settings = QgsSettings()
+        saved_layer_name = settings.value("YOLOPlugin/last_layer", "")
+
+        if saved_layer_name in layer_names:
+            index = layer_names.index(saved_layer_name)
             self.dlg.comboBox.setCurrentIndex(index)
+        else:
+            active_layer = self.iface.activeLayer()
+            if active_layer and active_layer.name() in layer_names:
+                self.dlg.comboBox.setCurrentIndex(layer_names.index(active_layer.name()))
 
         self.dlg.show()
         result = self.dlg.exec_()
 
         if result:
             selected_layer_index = self.dlg.comboBox.currentIndex()
+            if selected_layer_index < 0:
+                return
+
             self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
             self.last_selected_layer_name = self.selectedLayer.name()
+            settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
 
             self.class_colors = self.dlg.get_class_colors()
             self.conf_threshold = self.dlg.get_confidence_threshold()

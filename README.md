@@ -56,7 +56,7 @@ These images show grids of sample images from test sets with bounding boxes and 
 
 ## Plugin Installation
 
-1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/TyoiwAwQ#auaFAyJWsfG7hUBbBu66KABVyU9Xwfy40wrMW4svvvc)**
+1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/ui4FHIZI#p8Em_ap2KBFpmZsDzVrqrQgmS6JaOW2RbterTqat3rE)**
 
 2. Run **QGIS**.
 
@@ -82,7 +82,7 @@ The plugin depends on the `ultralytics` Python library.
 1. Open **OSGeo4W Shell** matching your QGIS installation.
 2. Run:
    ```bash
-   pip install ultralytics
+   pip install ultralytics onnx onnxruntime-gpu
    ```
 
 ## GUI of QGIS YOLO Plugin
