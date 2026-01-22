@@ -125,7 +125,7 @@ class YOLOPlugin:
     def get_model(self, model_path):
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
-                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2)
+                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2, duration=4)
                 return None
             self.model_cache[model_path] = YOLO(model_path)
         return self.model_cache[model_path]
@@ -184,7 +184,7 @@ class YOLOPlugin:
                 if self.dlg.get_run_multiple():
                     second_model = self.dlg.get_second_model_path()
                     if second_model == self.dlg.lineEdit_model1.text():
-                        self.iface.messageBar().pushMessage("Error", "Models are the same.", level=2)
+                        self.iface.messageBar().pushMessage("Error", "Models are the same.", level=2, duration=4)
                         return
                     if second_model:
                         self.models_to_run.append(second_model)
@@ -197,7 +197,7 @@ class YOLOPlugin:
     def handle_export(self):
         export_dir = self.dlg.lineEdit_export_dir.text()
         if not export_dir or not os.path.isdir(export_dir):
-            self.iface.messageBar().pushMessage("Error", "Invalid export directory.", level=2)
+            self.iface.messageBar().pushMessage("Error", "Invalid export directory.", level=2, duration=4)
             return
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -224,7 +224,7 @@ class YOLOPlugin:
             painter.end()
 
             image.save(img_path)
-            self.iface.messageBar().pushMessage("Export", f"Image saved: {base_filename}.png", level=0)
+            self.iface.messageBar().pushMessage("Export", f"Image saved: {base_filename}.png", level=0, duration=2)
 
         if self.dlg.checkBox_save_yolo.isChecked():
             selected_layer_name = self.dlg.comboBox_export_layer.currentText()
@@ -235,7 +235,7 @@ class YOLOPlugin:
                     break
 
             if not target_layer:
-                self.iface.messageBar().pushMessage("Error", "Selected export layer not found.", level=2)
+                self.iface.messageBar().pushMessage("Error", "Selected export layer not found.", level=2, duration=4)
                 return
 
             txt_path = os.path.join(export_dir, f"{base_filename}.txt")
@@ -271,16 +271,12 @@ class YOLOPlugin:
             with open(txt_path, "w") as f:
                 f.write("\n".join(yolo_lines))
 
-            self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0)
+            self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
 
     def save_layer(self, layer):
         project_path = QgsProject.instance().fileName()
         if not project_path:
-            self.iface.messageBar().pushMessage(
-                "Warning",
-                "Project not saved. Please save the project to store the YOLO detection layer.",
-                level=1,
-            )
+            self.iface.messageBar().pushMessage("Warning", "Project not saved. Please save the project to store the YOLO detection layer.", level=1, duration=3)
             return
 
         project_dir = os.path.dirname(project_path)
@@ -385,7 +381,7 @@ class YOLOPlugin:
                     features.append(feat)
 
         if not features:
-            self.iface.messageBar().pushMessage("No objects detected", level=1)
+            self.iface.messageBar().pushMessage("No objects detected", level=1, duration=2)
             return
 
         layer = self.get_or_create_layer()
@@ -428,4 +424,4 @@ class YOLOPlugin:
         layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
         self.save_layer(layer)
-        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0)
+        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=2)
