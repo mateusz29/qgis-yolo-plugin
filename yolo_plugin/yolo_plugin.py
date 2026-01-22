@@ -109,7 +109,7 @@ class YOLOPlugin:
     def get_model(self, model_path):
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
-                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2, duration=5)
+                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2)
                 return None
             self.model_cache[model_path] = YOLO(model_path)
         return self.model_cache[model_path]
@@ -167,6 +167,9 @@ class YOLOPlugin:
                 self.models_to_run = [self.dlg.lineEdit_model1.text()]
                 if self.dlg.get_run_multiple():
                     second_model = self.dlg.get_second_model_path()
+                    if second_model == self.dlg.lineEdit_model1.text():
+                        self.iface.messageBar().pushMessage("Error", "Models are the same.", level=2)
+                        return
                     if second_model:
                         self.models_to_run.append(second_model)
 
@@ -261,7 +264,6 @@ class YOLOPlugin:
                 "Warning",
                 "Project not saved. Please save the project to store the YOLO detection layer.",
                 level=1,
-                duration=10,
             )
             return
 
@@ -367,7 +369,7 @@ class YOLOPlugin:
                     features.append(feat)
 
         if not features:
-            self.iface.messageBar().pushMessage("No objects detected", level=1, duration=3)
+            self.iface.messageBar().pushMessage("No objects detected", level=1)
             return
 
         layer = self.get_or_create_layer()
@@ -392,4 +394,4 @@ class YOLOPlugin:
         layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
         self.save_layer(layer)
-        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=5)
+        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0)
