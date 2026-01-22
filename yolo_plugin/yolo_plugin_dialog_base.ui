@@ -327,24 +327,24 @@
            </item>
           </layout>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="label_export_layer">
-           <property name="text">
-            <string>Export detections from:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <widget class="QComboBox" name="comboBox_export_layer"/>
-         </item>
-         <item row="2" column="0">
+        <item row="1" column="0">
           <widget class="QLabel" name="label_options">
            <property name="text">
             <string>Options:</string>
            </property>
           </widget>
          </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_export_layer">
+           <property name="text">
+            <string>Export detections from:</string>
+           </property>
+          </widget>
+         </item>
          <item row="2" column="1">
+          <widget class="QComboBox" name="comboBox_export_layer"/>
+         </item>
+         <item row="1" column="1">
           <layout class="QVBoxLayout" name="verticalLayout_export_options">
            <item>
             <widget class="QCheckBox" name="checkBox_save_canvas">
