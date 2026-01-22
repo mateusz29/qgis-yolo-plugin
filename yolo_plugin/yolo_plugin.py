@@ -59,6 +59,22 @@ class YOLOPlugin:
         self.menu = "&YOLO Plugin"
         self.model_cache = {}
         self.last_selected_layer_name = None
+        self.object_names = {
+            "airport": "airport",
+            "helicopter": "helicopter",
+            "plane": "aircraft",
+            "oiltank": "storage tank",
+            "warship": "warship",
+            "ship": "civil ship"
+        }
+        self.object_ids = {
+            "airport": 0,
+            "helicopter": 1,
+            "plane": 3,
+            "oiltank": 2,
+            "warship": 1,
+            "ship": 0
+        }
 
     def add_action(
         self,
@@ -246,8 +262,8 @@ class YOLOPlugin:
                 h = abs(norm_y_max - norm_y_min)
 
                 try:
-                    class_id = self.dlg.class_names.index(feature["class"])
-                except ValueError:
+                    class_id = self.object_ids.get(feature["class"], 0)
+                except Exception:
                     class_id = 0
 
                 yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
@@ -380,16 +396,22 @@ class YOLOPlugin:
         outline_alpha = int(255 * (1 - self.dlg.get_outline_transparency() / 100))
         categories = []
         for name in detected_classes:
-            colors = self.class_colors.get(name)
-            f_c = QColor(colors["fill"])
-            o_c = QColor(colors["outline"])
+            ui_name = self.object_names.get(name)
+            colors = self.class_colors.get(ui_name)
+
+            if colors is None:
+                f_c = QColor("white")
+                o_c = QColor("black")
+            else:
+                f_c = QColor(colors.get("fill", "white"))
+                o_c = QColor(colors.get("outline", "black"))
             
             sym = QgsFillSymbol.createSimple({
                 "outline_width": "1.0",
                 "color": f"{f_c.red()},{f_c.green()},{f_c.blue()},{fill_alpha if self.dlg.get_fill_enabled() else 0}",
                 "outline_color": f"{o_c.red()},{o_c.green()},{o_c.blue()},{outline_alpha}",
             })
-            categories.append(QgsRendererCategory(name, sym, name))
+            categories.append(QgsRendererCategory(name, sym, ui_name if ui_name else name))
 
         if categories:
             if not self.create_new_layer:

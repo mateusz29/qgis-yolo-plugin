@@ -27,6 +27,7 @@ from functools import partial
 
 from qgis.core import QgsSettings
 from qgis.PyQt import QtWidgets, uic
+from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QFileDialog
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui"))
@@ -49,14 +50,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
-        self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship", "ship"]
+        self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civil ship"]
         self.default_colors = {
             "airport": "blue",
             "helicopter": "orange",
-            "plane": "yellow",
-            "oiltank": "red",
+            "aircraft": "yellow",
+            "storage tank": "red",
             "warship": "cyan",
-            "ship": "magenta"
+            "civil ship": "magenta"
         }
         self.color_buttons = {}
         self.populate_color_pickers()
@@ -64,7 +65,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.update_transparency_enabled()
 
     def populate_color_pickers(self):
-        for class_name in self.class_names:
+        for class_name in self.display_class_names:
             layout = QHBoxLayout()
             label = QLabel(class_name)
             outline_btn = QPushButton()
@@ -91,16 +92,19 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def select_color(self, class_name, kind):
         color = QColorDialog.getColor()
         if color.isValid():
-            self.color_buttons[class_name][kind].setStyleSheet(f"background-color: {color.name()}")
+            color_hex = color.name()
+            self.color_buttons[class_name][kind].setStyleSheet(f"background-color: {color_hex}")
+            self.color_buttons[class_name][f"{kind}_hex"] = color_hex
 
     def get_class_colors(self):
-        return {
-            class_name: {
-                "outline": self.color_buttons[class_name]["outline"].palette().button().color().name(),
-                "fill": self.color_buttons[class_name]["fill"].palette().button().color().name(),
+        colors = {}
+        for class_name in self.display_class_names:
+            default_hex = QColor(self.default_colors.get(class_name, "black")).name()
+            colors[class_name] = {
+                "outline": self.color_buttons[class_name].get("outline_hex", default_hex),
+                "fill": self.color_buttons[class_name].get("fill_hex", default_hex)
             }
-            for class_name in self.class_names
-        }
+        return colors
 
     def get_confidence_threshold(self):
         return self.spinBox_confidence.value()
