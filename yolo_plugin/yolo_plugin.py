@@ -23,14 +23,13 @@
 """
 
 import os
-
+import datetime
 import numpy as np
 from qgis.core import (
     QgsSettings,
     QgsCategorizedSymbolRenderer,
     QgsFeature,
     QgsField,
-    QgsFields,
     QgsFillSymbol,
     QgsGeometry,
     QgsMapRendererCustomPainterJob,
@@ -60,7 +59,6 @@ class YOLOPlugin:
         self.menu = "&YOLO Plugin"
         self.model_cache = {}
         self.last_selected_layer_name = None
-
 
     def add_action(
         self,
@@ -93,7 +91,6 @@ class YOLOPlugin:
         self.actions.append(action)
         return action
 
-
     def initGui(self):
         icon_path = f"{self.plugin_dir}/icon.png"
         self.add_action(
@@ -104,12 +101,10 @@ class YOLOPlugin:
         )
         self.first_start = True
 
-
     def unload(self):
         for action in self.actions:
             self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
-
 
     def get_model(self, model_path):
         if model_path not in self.model_cache:
@@ -119,52 +114,145 @@ class YOLOPlugin:
             self.model_cache[model_path] = YOLO(model_path)
         return self.model_cache[model_path]
 
-
     def run(self):
         if self.first_start:
             self.first_start = False
             self.dlg = YOLOPluginDialog()
-            
-        layers = QgsProject.instance().layerTreeRoot().children()
+
+        layers = QgsProject.instance().mapLayers().values()
         layer_names = [layer.name() for layer in layers]
         self.dlg.comboBox.clear()
         self.dlg.comboBox.addItems(layer_names)
 
+        self.dlg.comboBox_export_layer.clear()
+        self.dlg.comboBox_export_layer.addItems(layer_names)
+
+        self.dlg.comboBox_export_layer.setEnabled(self.dlg.checkBox_save_yolo.isChecked())
+        try: 
+            self.dlg.checkBox_save_yolo.toggled.disconnect()
+        except TypeError:
+            pass
+        self.dlg.checkBox_save_yolo.toggled.connect(
+            lambda checked: self.dlg.comboBox_export_layer.setEnabled(checked)
+        )
+
         settings = QgsSettings()
         saved_layer_name = settings.value("YOLOPlugin/last_layer", "")
-
         if saved_layer_name in layer_names:
             index = layer_names.index(saved_layer_name)
             self.dlg.comboBox.setCurrentIndex(index)
-        else:
-            active_layer = self.iface.activeLayer()
-            if active_layer and active_layer.name() in layer_names:
-                self.dlg.comboBox.setCurrentIndex(layer_names.index(active_layer.name()))
 
         self.dlg.show()
         result = self.dlg.exec_()
 
         if result:
-            selected_layer_index = self.dlg.comboBox.currentIndex()
-            if selected_layer_index < 0:
+            current_tab = self.dlg.tabWidget.currentIndex()
+            if current_tab == 0:
+                selected_layer_name = self.dlg.comboBox.currentText()
+                for layer in QgsProject.instance().mapLayers().values():
+                    if layer.name() == selected_layer_name:
+                        self.selectedLayer = layer
+                        break
+
+                if not self.selectedLayer:
+                    return
+
+                self.last_selected_layer_name = self.selectedLayer.name()
+                settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+
+                self.class_colors = self.dlg.get_class_colors()
+                self.conf_threshold = self.dlg.get_confidence_threshold()
+                self.create_new_layer = self.dlg.get_create_new_layer()
+
+                self.models_to_run = [self.dlg.lineEdit_model1.text()]
+                if self.dlg.get_run_multiple():
+                    second_model = self.dlg.get_second_model_path()
+                    if second_model:
+                        self.models_to_run.append(second_model)
+
+                self.detect_objects()
+
+            elif current_tab == 1:
+                self.handle_export()
+
+    def handle_export(self):
+        export_dir = self.dlg.lineEdit_export_dir.text()
+        if not export_dir or not os.path.isdir(export_dir):
+            self.iface.messageBar().pushMessage("Error", "Invalid export directory.", level=2)
+            return
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_filename = f"yolo_export_{timestamp}"
+
+        canvas = self.iface.mapCanvas()
+        extent = canvas.extent()
+
+        if self.dlg.checkBox_save_canvas.isChecked():
+            img_path = os.path.join(export_dir, f"{base_filename}.png")
+            settings = canvas.mapSettings()
+
+            export_layer_name = self.dlg.comboBox_export_layer.currentText()
+            clean_layers = [lyr for lyr in settings.layers() if lyr.name() != export_layer_name]
+            settings.setLayers(clean_layers)
+
+            image = QImage(settings.outputSize(), QImage.Format_ARGB32_Premultiplied)
+            image.fill(QColor(0, 0, 0, 0))
+
+            painter = QPainter(image)
+            job = QgsMapRendererCustomPainterJob(settings, painter)
+            job.start()
+            job.waitForFinished()
+            painter.end()
+
+            image.save(img_path)
+            self.iface.messageBar().pushMessage("Export", f"Image saved: {base_filename}.png", level=0)
+
+        if self.dlg.checkBox_save_yolo.isChecked():
+            selected_layer_name = self.dlg.comboBox_export_layer.currentText()
+            target_layer = None
+            for layer in QgsProject.instance().mapLayers().values():
+                if layer.name() == selected_layer_name:
+                    target_layer = layer
+                    break
+
+            if not target_layer:
+                self.iface.messageBar().pushMessage("Error", "Selected export layer not found.", level=2)
                 return
 
-            self.selectedLayer = QgsProject.instance().layerTreeRoot().children()[selected_layer_index].layer()
-            self.last_selected_layer_name = self.selectedLayer.name()
-            settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+            txt_path = os.path.join(export_dir, f"{base_filename}.txt")
+            
+            request = target_layer.getFeatures(extent)
 
-            self.class_colors = self.dlg.get_class_colors()
-            self.conf_threshold = self.dlg.get_confidence_threshold()
-            self.create_new_layer = self.dlg.get_create_new_layer()
-        
-            self.models_to_run = [self.dlg.lineEdit_model1.text()]
-            if self.dlg.get_run_multiple():
-                second_model = self.dlg.get_second_model_path()
-                if second_model:
-                    self.models_to_run.append(second_model)
+            yolo_lines = []
+            for feature in request:
+                geom = feature.geometry()
+                if not geom:
+                    continue
 
-            self.detect_objects()
+                bbox = geom.boundingBox()
+                if not extent.contains(bbox):
+                    continue
 
+                norm_x_min = (bbox.xMinimum() - extent.xMinimum()) / extent.width()
+                norm_x_max = (bbox.xMaximum() - extent.xMinimum()) / extent.width()
+                norm_y_min = (extent.yMaximum() - bbox.yMaximum()) / extent.height()
+                norm_y_max = (extent.yMaximum() - bbox.yMinimum()) / extent.height()
+                x_center = (norm_x_min + norm_x_max) / 2.0
+                y_center = (norm_y_min + norm_y_max) / 2.0
+                w = abs(norm_x_max - norm_x_min)
+                h = abs(norm_y_max - norm_y_min)
+
+                try:
+                    class_id = self.dlg.class_names.index(feature["class"])
+                except ValueError:
+                    class_id = 0
+
+                yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
+
+            with open(txt_path, "w") as f:
+                f.write("\n".join(yolo_lines))
+
+            self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0)
 
     def save_layer(self, layer):
         project_path = QgsProject.instance().fileName()
@@ -206,113 +294,75 @@ class YOLOPlugin:
                         pass
             next_num = 1 if not existing_numbers else max(existing_numbers) + 1
             layer_name = f"YOLO Detections {next_num}"
-
             layer = QgsVectorLayer("Polygon?crs=EPSG:3857", layer_name, "memory")
-            pr = layer.dataProvider()
-            fields = QgsFields()
-            fields.append(QgsField("class", QMetaType.Type.QString))
-            pr.addAttributes(fields)
-            layer.updateFields()
-            QgsProject.instance().addMapLayer(layer)
-            return layer
         else:
             layer = None
             for lyr in QgsProject.instance().mapLayers().values():
                 if lyr.name() == "YOLO Detections 1":
                     layer = lyr
                     break
-
             if layer is None:
                 layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections 1", "memory")
-                pr = layer.dataProvider()
-                fields = QgsFields()
-                fields.append(QgsField("class", QMetaType.Type.QString))
-                pr.addAttributes(fields)
-                layer.updateFields()
-                QgsProject.instance().addMapLayer(layer)
 
-            return layer
-
+        if layer.fields().count() == 0:
+            pr = layer.dataProvider()
+            pr.addAttributes([QgsField("class", QMetaType.Type.QString)])
+            layer.updateFields()
+            QgsProject.instance().addMapLayer(layer)
+        return layer
 
     def render_layer_to_image(self, layer):
         canvas = self.iface.mapCanvas()
-        extent = canvas.extent()
-
         settings = QgsMapSettings()
-        settings.setExtent(extent)
+        settings.setExtent(canvas.extent())
         settings.setOutputSize(QSize(canvas.width(), canvas.height()))
         settings.setDestinationCrs(canvas.mapSettings().destinationCrs())
         settings.setLayers([layer])
 
         image = QImage(canvas.width(), canvas.height(), QImage.Format_ARGB32_Premultiplied)
         image.fill(0)
-
         painter = QPainter(image)
         job = QgsMapRendererCustomPainterJob(settings, painter)
         job.start()
         job.waitForFinished()
         painter.end()
-
         return image
-
 
     def detect_objects(self):
         img = self.render_layer_to_image(self.selectedLayer)
-
-        width = img.width()
-        height = img.height()
+        width, height = img.width(), img.height()
         ptr = img.bits()
         ptr.setsize(img.byteCount())
-
         img_array = np.array(ptr).reshape((height, width, 4))
-
         img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
 
         all_results = {}
         for m_path in self.models_to_run:
             model = self.get_model(m_path)
-            if not model:
-                continue
-            all_results[m_path] = model.predict(img_rgb)
+            if model:
+                all_results[m_path] = model.predict(img_rgb)
 
         extent = self.iface.mapCanvas().extent()
-
         features = []
         detected_classes = set()
 
         for _, model_results in all_results.items():
             for r in model_results:
                 for i, box in enumerate(r.boxes.xyxy):
-                    conf = float(r.boxes.conf[i].item())
-
-                    if conf < self.conf_threshold:
+                    if float(r.boxes.conf[i].item()) < self.conf_threshold:
                         continue
-
+                    
                     x_min, y_min, x_max, y_max = box.tolist()
-
                     x1 = extent.xMinimum() + (x_min / width) * extent.width()
                     y1 = extent.yMaximum() - (y_min / height) * extent.height()
                     x2 = extent.xMinimum() + (x_max / width) * extent.width()
                     y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
-                    class_id = int(r.boxes.cls[i].item())
-                    class_name = r.names[class_id]
+                    class_name = r.names[int(r.boxes.cls[i].item())]
                     detected_classes.add(class_name)
 
                     feat = QgsFeature()
-                    feat.setGeometry(
-                        QgsGeometry.fromPolygonXY(
-                            [
-                                [
-                                    QgsPointXY(x1, y1),
-                                    QgsPointXY(x2, y1),
-                                    QgsPointXY(x2, y2),
-                                    QgsPointXY(x1, y2),
-                                    QgsPointXY(x1, y1),
-                                ]
-                            ]
-                        )
-                    )
+                    feat.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(x1,y1), QgsPointXY(x2,y1), QgsPointXY(x2,y2), QgsPointXY(x1,y2), QgsPointXY(x1,y1)]]))
                     feat.setAttributes([class_name])
                     features.append(feat)
 
@@ -321,53 +371,25 @@ class YOLOPlugin:
             return
 
         layer = self.get_or_create_layer()
-        pr = layer.dataProvider()
-
-        pr.addFeatures(features)
+        layer.dataProvider().addFeatures(features)
         layer.updateExtents()
 
-        fill_enabled = self.dlg.get_fill_enabled()
-        fill_transparency = self.dlg.get_fill_transparency()
-        outline_transparency = self.dlg.get_outline_transparency()
-        fill_alpha = int(255 * (1 - fill_transparency / 100))
-        outline_alpha = int(255 * (1 - outline_transparency / 100))
-
+        fill_alpha = int(255 * (1 - self.dlg.get_fill_transparency() / 100))
+        outline_alpha = int(255 * (1 - self.dlg.get_outline_transparency() / 100))
         categories = []
-        for class_name in detected_classes:
-            colors = self.class_colors.get(class_name)
-
-            fill_color_obj = QColor(colors["fill"])
-            outline_color_obj = QColor(colors["outline"])
-            outline_color = (
-                f"{outline_color_obj.red()},{outline_color_obj.green()},{outline_color_obj.blue()},{outline_alpha}"
-            )
-
-            if fill_enabled:
-                fill_color = f"{fill_color_obj.red()},{fill_color_obj.green()},{fill_color_obj.blue()},{fill_alpha}"
-            else:
-                fill_color = "0,0,0,0"
-
-            symbol_params = {
+        for name in detected_classes:
+            colors = self.class_colors.get(name)
+            f_c = QColor(colors["fill"])
+            o_c = QColor(colors["outline"])
+            
+            sym = QgsFillSymbol.createSimple({
                 "outline_width": "1.0",
-                "color": fill_color,
-                "outline_color": outline_color,
-            }
+                "color": f"{f_c.red()},{f_c.green()},{f_c.blue()},{fill_alpha if self.dlg.get_fill_enabled() else 0}",
+                "outline_color": f"{o_c.red()},{o_c.green()},{o_c.blue()},{outline_alpha}",
+            })
+            categories.append(QgsRendererCategory(name, sym, name))
 
-            symbol = QgsFillSymbol.createSimple(symbol_params)
-            cat = QgsRendererCategory(class_name, symbol, class_name)
-            categories.append(cat)
-
-        if categories:
-            if not self.create_new_layer:
-                old_renderer = layer.renderer()
-                if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
-                    for cat in old_renderer.categories():
-                        if cat.value() not in [c.value() for c in categories]:
-                            categories.append(cat)
-
-            renderer = QgsCategorizedSymbolRenderer("class", categories)
-            layer.setRenderer(renderer)
-
+        layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
         self.save_layer(layer)
         self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=5)

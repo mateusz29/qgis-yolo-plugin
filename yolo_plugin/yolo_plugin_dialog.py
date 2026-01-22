@@ -34,9 +34,13 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plu
 
 class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
-        """Constructor."""
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
+        self.btn_detect_ok.clicked.connect(self.accept)
+        self.btn_detect_cancel.clicked.connect(self.reject)
+        self.btn_export_save.clicked.connect(self.accept)
+        self.btn_export_cancel.clicked.connect(self.reject)
+        self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
         self.checkBox_run_multiple.stateChanged.connect(
@@ -44,6 +48,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         )
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
+        self.toolButton_export_dir.clicked.connect(self.select_export_dir)
         self.class_names = ["airport", "helicopter", "oiltank", "plane", "warship", "ship"]
         self.default_colors = {
             "airport": "blue",
@@ -77,6 +82,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
             self.verticalLayout_colors.addLayout(layout)
             self.color_buttons[class_name] = {"outline": outline_btn, "fill": fill_btn}
+
+    def select_export_dir(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Export Directory")
+        if directory:
+            self.lineEdit_export_dir.setText(directory)
 
     def select_color(self, class_name, kind):
         color = QColorDialog.getColor()
@@ -113,9 +123,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def select_model_path(self):
         settings = QgsSettings()
         last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
-
         filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
-
         if filename:
             self.lineEdit_model1.setText(filename)
             new_dir = os.path.dirname(filename)
@@ -124,9 +132,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def select_model_path2(self):
         settings = QgsSettings()
         last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
-
         filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
-
         if filename:
             self.lineEdit_model2.setText(filename)
             new_dir = os.path.dirname(filename)
@@ -141,4 +147,3 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_run_multiple(self):
         return self.checkBox_run_multiple.isChecked()
-
