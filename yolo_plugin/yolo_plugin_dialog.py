@@ -50,6 +50,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
+        self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
         self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civil ship"]
         self.default_colors = {
             "airport": "blue",
@@ -106,6 +107,12 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             }
         return colors
 
+    def get_save_option(self):
+        return "new" if self.radio_new_layer.isChecked() else "append"
+
+    def get_target_layer_name(self):
+        return self.comboBox_target_layer.currentText()
+
     def get_confidence_threshold(self):
         return self.spinBox_confidence.value()
 
@@ -117,9 +124,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_outline_transparency(self):
         return self.spinBox_outline_transparency.value()
-
-    def get_create_new_layer(self):
-        return self.checkBox_new_layer.isChecked()
 
     def update_transparency_enabled(self):
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())

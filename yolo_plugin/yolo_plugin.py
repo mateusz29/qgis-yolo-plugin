@@ -39,6 +39,7 @@ from qgis.core import (
     QgsRendererCategory,
     QgsVectorFileWriter,
     QgsVectorLayer,
+    QgsMapLayer
 )
 from qgis.PyQt.QtCore import QMetaType, QSize
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
@@ -143,6 +144,10 @@ class YOLOPlugin:
         self.dlg.comboBox_export_layer.clear()
         self.dlg.comboBox_export_layer.addItems(layer_names)
 
+        self.dlg.comboBox_target_layer.clear()
+        vector_layers = [lyr.name() for lyr in layers if lyr.type() == QgsMapLayer.VectorLayer]
+        self.dlg.comboBox_target_layer.addItems(vector_layers)
+
         self.dlg.comboBox_export_layer.setEnabled(self.dlg.checkBox_save_yolo.isChecked())
         try: 
             self.dlg.checkBox_save_yolo.toggled.disconnect()
@@ -178,7 +183,7 @@ class YOLOPlugin:
 
                 self.class_colors = self.dlg.get_class_colors()
                 self.conf_threshold = self.dlg.get_confidence_threshold()
-                self.create_new_layer = self.dlg.get_create_new_layer()
+                self.is_new_mode = (self.dlg.get_save_option() == "new")
 
                 self.models_to_run = [self.dlg.lineEdit_model1.text()]
                 if self.dlg.get_run_multiple():
@@ -297,7 +302,8 @@ class YOLOPlugin:
 
 
     def get_or_create_layer(self):
-        if self.create_new_layer:
+        save_option = self.dlg.get_save_option()
+        if save_option == "new":
             existing_numbers = []
             for lyr in QgsProject.instance().mapLayers().values():
                 if lyr.name().startswith("YOLO Detections "):
@@ -306,23 +312,32 @@ class YOLOPlugin:
                         existing_numbers.append(num)
                     except ValueError:
                         pass
+
             next_num = 1 if not existing_numbers else max(existing_numbers) + 1
             layer_name = f"YOLO Detections {next_num}"
             layer = QgsVectorLayer("Polygon?crs=EPSG:3857", layer_name, "memory")
-        else:
-            layer = None
-            for lyr in QgsProject.instance().mapLayers().values():
-                if lyr.name() == "YOLO Detections 1":
-                    layer = lyr
-                    break
-            if layer is None:
-                layer = QgsVectorLayer("Polygon?crs=EPSG:3857", "YOLO Detections 1", "memory")
 
-        if layer.fields().count() == 0:
             pr = layer.dataProvider()
             pr.addAttributes([QgsField("class", QMetaType.Type.QString)])
             layer.updateFields()
             QgsProject.instance().addMapLayer(layer)
+        else:
+            target_name = self.dlg.get_target_layer_name()
+            layer = None
+            for lyr in QgsProject.instance().mapLayers().values():
+                if lyr.name() == target_name:
+                    layer = lyr
+                    break
+
+            if layer is None:
+                self.iface.messageBar().pushMessage("Error", "Target layer not found, creating new.", level=2, duration=4)
+                return self.get_or_create_layer()
+
+            if layer.fields().indexFromName("class") == -1:
+                if layer.isEditable() or layer.startEditing():
+                    layer.addAttribute(QgsField("class", QMetaType.Type.QString))
+                    layer.commitChanges()
+
         return layer
 
     def render_layer_to_image(self, layer):
@@ -410,16 +425,12 @@ class YOLOPlugin:
             categories.append(QgsRendererCategory(name, sym, ui_name if ui_name else name))
 
         if categories:
-            if not self.create_new_layer:
+            if not self.is_new_mode:
                 old_renderer = layer.renderer()
                 if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
                     for cat in old_renderer.categories():
                         if cat.value() not in [c.value() for c in categories]:
                             categories.append(cat)
-
-            renderer = QgsCategorizedSymbolRenderer("class", categories)
-            layer.setRenderer(renderer)
-
 
         layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
