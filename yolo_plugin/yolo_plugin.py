@@ -216,7 +216,13 @@ class YOLOPlugin:
             settings = canvas.mapSettings()
 
             export_layer_name = self.dlg.comboBox_export_layer.currentText()
-            clean_layers = [lyr for lyr in settings.layers() if lyr.name() != export_layer_name]
+            clean_layers = []
+            for layer in settings.layers():
+                if layer.name() == export_layer_name:
+                    continue
+                if layer.name().startswith("YOLO Detections"):
+                    continue
+                clean_layers.append(layer)
             settings.setLayers(clean_layers)
 
             image = QImage(settings.outputSize(), QImage.Format_ARGB32_Premultiplied)
