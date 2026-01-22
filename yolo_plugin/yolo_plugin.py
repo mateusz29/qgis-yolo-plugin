@@ -141,8 +141,13 @@ class YOLOPlugin:
         self.dlg.comboBox.clear()
         self.dlg.comboBox.addItems(layer_names)
 
+        yolo_layer_names = [
+            layer.name() for layer in layers 
+            if layer.name().startswith("YOLO Detections")
+        ]
+
         self.dlg.comboBox_export_layer.clear()
-        self.dlg.comboBox_export_layer.addItems(layer_names)
+        self.dlg.comboBox_export_layer.addItems(yolo_layer_names)
 
         self.dlg.comboBox_target_layer.clear()
         vector_layers = [lyr.name() for lyr in layers if lyr.type() == QgsMapLayer.VectorLayer]
