@@ -391,6 +391,18 @@ class YOLOPlugin:
             })
             categories.append(QgsRendererCategory(name, sym, name))
 
+        if categories:
+            if not self.create_new_layer:
+                old_renderer = layer.renderer()
+                if isinstance(old_renderer, QgsCategorizedSymbolRenderer):
+                    for cat in old_renderer.categories():
+                        if cat.value() not in [c.value() for c in categories]:
+                            categories.append(cat)
+
+            renderer = QgsCategorizedSymbolRenderer("class", categories)
+            layer.setRenderer(renderer)
+
+
         layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
         self.save_layer(layer)
