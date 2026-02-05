@@ -93,7 +93,7 @@ The plugin is configured to let the user define the input parameters:
 2. Select model - selected model will be used for objects recognition.
 3. Multiple layers - possibilty to enable two models.
 4. Select second model - second model used for object detection.
-5. Layer option - option to create new layers for detections
+5. Save detections to: specifies whether detections are saved to a new layer or appended to an existing layer (e.g. “YOLO Detections 1”).
 6. Class colors - user can define colors for each class.
 7. Confidence threshold - results with confidence below threshold will not be presented.  
 8. Fill rectangles - enable to draw filled rectangles for detected objects.
