@@ -4,8 +4,6 @@
 
 YOLO-MOD is a QGIS plugin for object detection and classification in optical remote sensing imagery using **YOLO deep learning models**. It allows users to detect multiple object categories—such as ships, aircraft, helicopters, airports, and storage tanks—directly within standard GIS workflows. The plugin provides access to pre-trained models and tools for exporting detection results and generating datasets, without requiring prior machine learning experience. The latest version supports **YOLOv11 and YOLOv12** architectures with multiple model sizes.
 
-The plugin allows users to detect objects from aerial and satellite imagery directly within QGIS.
-
 ## Datasets and Models
 
 ### Datasets
