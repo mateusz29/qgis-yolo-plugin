@@ -1,4 +1,4 @@
-# YOLO-MOD plugin
+# YOLO-MOD Plugin
 
 ## Description
 
