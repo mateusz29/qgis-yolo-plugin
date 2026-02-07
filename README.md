@@ -8,10 +8,10 @@ YOLO-MOD is a QGIS plugin for object detection and classification in optical rem
 
 ### Datasets
 
-1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – Original dataset containing `oiltank`, `airport`, `helicopter`, and `plane`.  
+1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – Original dataset containing `storage tank`, `airport`, `helicopter`, and `aircraft`.  
    **[Modified DOTANA](https://mega.nz/file/2iA1RLpK#PEtxII1kMVUM60KDd4zwDGs8ghSK3w-g6Zazq_Q-bf4)** – `warships` removed to focus on non-ship objects.
 
-2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – Dataset containing `warships` and normal `ships`.  
+2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – Dataset containing `warships` and `civilian ships`.  
    **[YOLO-formatted ShipRSImageNet](https://mega.nz/file/X7oFDTQI#elcggfqFufNkKySSAAkelz_PAN5UB3AoDr3AIy-irls)** – Converted/modified version for YOLO training.
 
 ### Trained Models
