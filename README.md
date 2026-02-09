@@ -1,4 +1,4 @@
-# YOLO-MOD Plugin GUI
+# YOLO-MOD Plugin
 
 ## Description
 
@@ -83,7 +83,7 @@ The plugin depends on the `ultralytics` Python library.
    pip install ultralytics onnx onnxruntime-gpu
    ```
 
-## GUI of QGIS YOLO Plugin
+## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:
 <img src="assets/parameters.png" alt="GUI" width="50%">
 1. Select a layer - image from this layer will be processed.
