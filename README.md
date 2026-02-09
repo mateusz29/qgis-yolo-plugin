@@ -1,4 +1,4 @@
-# YOLO-MOD Plugin
+# YOLO-MOD Plugin GUI
 
 ## Description
 
