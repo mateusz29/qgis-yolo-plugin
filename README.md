@@ -85,7 +85,6 @@ The plugin depends on the `ultralytics` Python library.
 
 ## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:
-<img src="assets/parameters.png" alt="GUI" width="50%">
 1. Select a layer - image from this layer will be processed.
 2. Select model - selected model will be used for objects recognition.
 3. Multiple layers - possibilty to enable two models.
@@ -96,6 +95,14 @@ The plugin is configured to let the user define the input parameters:
 8. Fill rectangles - enable to draw filled rectangles for detected objects.
 9. Fill transparency - sets transparency level for filled rectangles.
 10. Outline transparency - sets transparency level for rectangle outlines.
+<img src="assets/parameters.png" alt="GUI" width="50%">
+
+The YOLO-MOD plugin provides an export interface for layer data, including:
+- map extent export to PNG,
+- detection export in YOLO format,
+- output directory selection,
+- source layer selection.
+<img src="assets/plugin_save_data.png" alt="GUI" width="50%">
 
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
