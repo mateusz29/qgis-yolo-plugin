@@ -85,8 +85,7 @@ The plugin depends on the `ultralytics` Python library.
 
 ## GUI of QGIS YOLO Plugin
 The plugin is configured to let the user define the input parameters:
-
-![GUI](assets/parameters.png)
+<img src="assets/parameters.png" alt="GUI" width="50%">
 1. Select a layer - image from this layer will be processed.
 2. Select model - selected model will be used for objects recognition.
 3. Multiple layers - possibilty to enable two models.
