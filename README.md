@@ -143,3 +143,9 @@ def setup_model(self, model, verbose=True):
 This forces the model to run on CPU, avoiding the call to get_cpu_info() that triggers the issue.
 
 For more context, see the related [Ultralytics GitHub issue #8609](https://github.com/ultralytics/ultralytics/issues/8609).
+
+### Slower first inference when using ONNX models
+
+The first ONNX inference usually has a higher initialization cost due to session setup.  
+Subsequent inferences are significantly faster, as the model and required resources are already loaded in memory.  
+In PyTorch (.pt), this initial overhead is often smaller.
