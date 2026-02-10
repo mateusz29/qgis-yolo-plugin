@@ -20,9 +20,7 @@ Models are trained in **four sizes**: Small, Medium, Large, Extra Large.
 
 * Total of **16 trained models** (4 sizes × 2 datasets × 2 YOLO versions).
 
-The **best-performing models** (based on `mAP50-95`) are available via Google Drive: 
-- ONNX format: [link](https://mega.nz/folder/HRNgmIxb#nPljOQT_tkkqncx8HykPDw)
-- PyTorch format (.pt): [link](https://mega.nz/folder/euQ1iIza#qc6S5maLXW0JNmW4tkyn8A)
+The **best-performing models** (based on `mAP50-95`) are available via Google Drive: [link](https://mega.nz/folder/euQ1iIza#qc6S5maLXW0JNmW4tkyn8A)
   
 **Best model filenames:**
 - `DOTANA_no_ships_yolo12x.onnx`, `DOTANA_no_ships_yolo12x.pt`
