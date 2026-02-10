@@ -50,6 +50,11 @@ from .yolo_plugin_dialog import YOLOPluginDialog
 
 
 class YOLOPlugin:
+    """Main plugin class integrating YOLO detection into QGIS.
+
+    This class manages the plugin lifecycle, GUI actions, model loading,
+    object detection on a selected vector layer, and exporting results.
+    """
     def __init__(self, iface):
         self.selectedLayer = None
         self.dlg = None
@@ -89,6 +94,45 @@ class YOLOPlugin:
         whats_this=None,
         parent=None,
     ):
+        """Add a toolbar icon to the toolbar.
+
+        :param icon_path: Path to the icon for this action. Can be a resource
+            path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
+        :type icon_path: str
+
+        :param text: Text that should be shown in menu items for this action.
+        :type text: str
+
+        :param callback: Function to be called when the action is triggered.
+        :type callback: function
+
+        :param enabled_flag: A flag indicating if the action should be enabled
+            by default. Defaults to True.
+        :type enabled_flag: bool
+
+        :param add_to_menu: Flag indicating whether the action should also
+            be added to the menu. Defaults to True.
+        :type add_to_menu: bool
+
+        :param add_to_toolbar: Flag indicating whether the action should also
+            be added to the toolbar. Defaults to True.
+        :type add_to_toolbar: bool
+
+        :param status_tip: Optional text to show in a popup when mouse pointer
+            hovers over the action.
+        :type status_tip: str
+
+        :param parent: Parent widget for the new action. Defaults None.
+        :type parent: QWidget
+
+        :param whats_this: Optional text to show in the status bar when the
+            mouse pointer hovers over the action.
+
+        :returns: The action that was created. Note that the action is also
+            added to self.actions list.
+        :rtype: QAction
+        """
+
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -119,11 +163,17 @@ class YOLOPlugin:
         self.first_start = True
 
     def unload(self):
+        """Remove plugin actions from QGIS UI when unloading the plugin."""
         for action in self.actions:
             self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
 
     def get_model(self, model_path):
+        """Load and cache a YOLO model from disk.
+
+        If the path is invalid, display an error message and return None.
+        Caching avoids reloading the same model multiple times.
+        """
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
                 self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2, duration=4)
@@ -132,6 +182,11 @@ class YOLOPlugin:
         return self.model_cache[model_path]
 
     def run(self):
+        """Show the plugin dialog and dispatch actions based on user input.
+
+        Prepares layer lists, restores last-used settings, and either
+        runs detection or performs export depending on the selected tab.
+        """
         if self.first_start:
             self.first_start = False
             self.dlg = YOLOPluginDialog()
@@ -196,6 +251,7 @@ class YOLOPlugin:
                 self.conf_threshold = self.dlg.get_confidence_threshold()
                 self.is_new_mode = (self.dlg.get_save_option() == "new")
 
+                # Collect model paths (support running two models sequentially)
                 self.models_to_run = [self.dlg.lineEdit_model1.text()]
                 if self.dlg.get_run_multiple():
                     second_model = self.dlg.get_second_model_path()
@@ -211,6 +267,11 @@ class YOLOPlugin:
                 self.handle_export()
 
     def handle_export(self):
+        """Export current map canvas image and/or YOLO detection labels.
+
+        Validates the export directory, optionally saves a PNG of the canvas,
+        and writes YOLO-format label files from a chosen detection layer.
+        """
         export_dir = self.dlg.lineEdit_export_dir.text()
         if not export_dir or not os.path.isdir(export_dir):
             self.iface.messageBar().pushMessage("Error", "Invalid export directory.", level=2, duration=4)
@@ -248,6 +309,7 @@ class YOLOPlugin:
             image.save(img_path)
             self.iface.messageBar().pushMessage("Export", f"Image saved: {base_filename}.png", level=0, duration=2)
 
+        # If user requested saving YOLO labels, write a .txt file with normalized bboxes
         if self.dlg.checkBox_save_yolo.isChecked():
             selected_layer_name = self.dlg.comboBox_export_layer.currentText()
             target_layer = None
@@ -296,6 +358,10 @@ class YOLOPlugin:
             self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
 
     def save_layer(self, layer):
+        """Persist a memory layer to a shapefile in the project directory.
+
+        If the project has not been saved, prompt the user to save first.
+        """
         project_path = QgsProject.instance().fileName()
         if not project_path:
             self.iface.messageBar().pushMessage("Warning", "Project not saved. Please save the project to store the YOLO detection layer.", level=1, duration=3)
@@ -319,6 +385,12 @@ class YOLOPlugin:
 
 
     def get_or_create_layer(self):
+        """Return an existing target layer or create a new YOLO Detections memory layer.
+
+        If the user chose 'append', the existing layer is returned (and
+        a missing 'class' attribute is added). If 'new' is chosen a
+        uniquely numbered memory layer is created and added to the project.
+        """
         save_option = self.dlg.get_save_option()
         if save_option == "new":
             existing_numbers = []
@@ -358,6 +430,10 @@ class YOLOPlugin:
         return layer
 
     def render_layer_to_image(self, layer):
+        """Render a vector layer to an off-screen image using current canvas settings.
+
+        Returns a QImage with the rendered layer contents sized to the map canvas.
+        """
         canvas = self.iface.mapCanvas()
         settings = QgsMapSettings()
         settings.setExtent(canvas.extent())
@@ -375,6 +451,12 @@ class YOLOPlugin:
         return image
 
     def detect_objects(self):
+        """Run YOLO inference on the rendered image and create polygon features.
+
+        The rendered image is converted to a NumPy array, fed to the model(s),
+        and detection boxes are converted back to project coordinates. Results
+        are added to the target vector layer and styled according to dialog settings.
+        """
         img = self.render_layer_to_image(self.selectedLayer)
         width, height = img.width(), img.height()
         ptr = img.bits()
