@@ -51,14 +51,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_model2.clicked.connect(self.select_model_path2)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
         self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
-        self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civil ship"]
+        self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civilian ship"]
         self.default_colors = {
             "airport": "blue",
             "helicopter": "orange",
             "aircraft": "yellow",
             "storage tank": "red",
             "warship": "cyan",
-            "civil ship": "magenta"
+            "civilian ship": "magenta"
         }
         self.color_buttons = {}
         self.populate_color_pickers()

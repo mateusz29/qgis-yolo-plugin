@@ -66,7 +66,7 @@ class YOLOPlugin:
             "plane": "aircraft",
             "oiltank": "storage tank",
             "warship": "warship",
-            "ship": "civil ship"
+            "ship": "civilian ship"
         }
         self.object_ids = {
             "airport": 0,
@@ -141,13 +141,19 @@ class YOLOPlugin:
         self.dlg.comboBox.clear()
         self.dlg.comboBox.addItems(layer_names)
 
-        yolo_layer_names = [
+        yolo_vector_layers = [
             layer.name() for layer in layers 
-            if layer.name().startswith("YOLO Detections")
+            if layer.type() == QgsMapLayer.VectorLayer and layer.name().startswith("YOLO Detections")
         ]
 
         self.dlg.comboBox_export_layer.clear()
-        self.dlg.comboBox_export_layer.addItems(yolo_layer_names)
+        self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
+
+        has_existing = len(yolo_vector_layers) > 0
+        self.dlg.radio_append_layer.setEnabled(has_existing)
+
+        if not has_existing:
+            self.dlg.radio_new_layer.setChecked(True)
 
         self.dlg.comboBox_target_layer.clear()
         vector_layers = [lyr.name() for lyr in layers if lyr.type() == QgsMapLayer.VectorLayer]
@@ -398,7 +404,8 @@ class YOLOPlugin:
                     x2 = extent.xMinimum() + (x_max / width) * extent.width()
                     y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
-                    class_name = r.names[int(r.boxes.cls[i].item())]
+                    raw_name = r.names[int(r.boxes.cls[i].item())]
+                    class_name = self.object_names.get(raw_name)
                     detected_classes.add(class_name)
 
                     feat = QgsFeature()
@@ -418,8 +425,7 @@ class YOLOPlugin:
         outline_alpha = int(255 * (1 - self.dlg.get_outline_transparency() / 100))
         categories = []
         for name in detected_classes:
-            ui_name = self.object_names.get(name)
-            colors = self.class_colors.get(ui_name)
+            colors = self.class_colors.get(name)
 
             if colors is None:
                 f_c = QColor("white")
@@ -433,7 +439,7 @@ class YOLOPlugin:
                 "color": f"{f_c.red()},{f_c.green()},{f_c.blue()},{fill_alpha if self.dlg.get_fill_enabled() else 0}",
                 "outline_color": f"{o_c.red()},{o_c.green()},{o_c.blue()},{outline_alpha}",
             })
-            categories.append(QgsRendererCategory(name, sym, ui_name if ui_name else name))
+            categories.append(QgsRendererCategory(name, sym, name))
 
         if categories:
             if not self.is_new_mode:
