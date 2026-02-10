@@ -54,7 +54,7 @@ These images show grids of sample images from test sets with bounding boxes and 
 
 ## Plugin Installation
 
-1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/myZy2YhI#dzvOriEDzWgH2LGubRsLKQlIlJJsKtbHh_a_DUHvi_4)**
+1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/HZVHnArb#dk5K8gnOUBcIaAdBrJtFJ4zfy6bX7RkaYLsVSBbVuu8)**
 
 2. Run **QGIS**.
 
