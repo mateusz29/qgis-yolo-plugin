@@ -34,6 +34,12 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plu
 
 
 class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
+    """Dialog UI for YOLO plugin settings and export options.
+
+    This class wraps the generated UI form and provides helper methods to
+    read user-configured options (model paths, colors, thresholds) used by
+    the main plugin class.
+    """
     def __init__(self, parent=None):
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
@@ -66,6 +72,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.update_transparency_enabled()
 
     def populate_color_pickers(self):
+        """Create color picker buttons for each object class.
+
+        Each class gets outline and fill buttons that let the user choose
+        colors used when rendering detection polygons.
+        """
         for class_name in self.display_class_names:
             layout = QHBoxLayout()
             label = QLabel(class_name)
@@ -86,11 +97,16 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             self.color_buttons[class_name] = {"outline": outline_btn, "fill": fill_btn}
 
     def select_export_dir(self):
+        """Open a directory chooser and set the export directory field."""
         directory = QFileDialog.getExistingDirectory(self, "Select Export Directory")
         if directory:
             self.lineEdit_export_dir.setText(directory)
 
     def select_color(self, class_name, kind):
+        """Show a QColorDialog and store the selected color for class rendering.
+
+        The chosen color is stored as a hex string in the internal `color_buttons` map.
+        """
         color = QColorDialog.getColor()
         if color.isValid():
             color_hex = color.name()
@@ -98,6 +114,10 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             self.color_buttons[class_name][f"{kind}_hex"] = color_hex
 
     def get_class_colors(self):
+        """Return a mapping of class names to color hex values for outline and fill.
+
+        Falls back to the configured defaults when the user did not choose a color.
+        """
         colors = {}
         for class_name in self.display_class_names:
             default_hex = QColor(self.default_colors.get(class_name, "black")).name()
@@ -129,6 +149,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
 
     def select_model_path(self):
+        """Open a file dialog to select the primary YOLO model file and remember its folder."""
         settings = QgsSettings()
         last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
         filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
@@ -138,6 +159,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             settings.setValue("YOLOPlugin/last_model_dir", new_dir)
 
     def select_model_path2(self):
+        """Open a file dialog to select the secondary YOLO model file (optional)."""
         settings = QgsSettings()
         last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
         filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
@@ -147,6 +169,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             settings.setValue("YOLOPlugin/last_model_dir", new_dir)
 
     def set_multiple_models_enabled(self, enabled):
+        """Enable or disable the secondary model UI controls based on checkbox state."""
         self.lineEdit_model2.setEnabled(enabled)
         self.toolButton_model2.setEnabled(enabled)
 
