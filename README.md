@@ -69,8 +69,7 @@ These images show grids of sample images from test sets with bounding boxes and 
 ## Requirements
 
 ### QGIS Environment
-This plugin is developed and tested with **QGIS installed via OSGeo4W (Windows)**.  
-Other installations are not supported.
+The plugin was developed and tested on Windows 11 using QGIS installed via **OSGeo4W (versions 3.40.6-Bratislava and 3.42.2-Münster)**. Other installation methods and operating systems are not supported.
 
 ### Python Dependency
 The plugin depends on the `ultralytics` Python library.
