@@ -8,8 +8,8 @@
                               -------------------
         begin                : 2025-04-26
         git sha              : $Format:%H$
-        copyright            : (C) 2025 by John doe
-        email                : john.doe@email.com
+        copyright            : (C) 2025 by Marcin Ciecholewski
+        email                : marcin.ciecholewski@pg.edu.pl
  ***************************************************************************/
 
 /***************************************************************************
