@@ -39,14 +39,27 @@ from qgis.core import (
     QgsRendererCategory,
     QgsVectorFileWriter,
     QgsVectorLayer,
-    QgsMapLayer
+    QgsMapLayer,
+    QgsRectangle
 )
 from qgis.PyQt.QtCore import QMetaType, QSize
-from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
+from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel
 from ultralytics import YOLO
 
 from .yolo_plugin_dialog import YOLOPluginDialog
+
+
+class PreviewPopup(QDialog):
+    """A simple popup window to display an image with rendered bounding boxes."""
+    def __init__(self, pixmap, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("YOLO Export Preview")
+        layout = QVBoxLayout(self)
+        label = QLabel()
+        label.setPixmap(pixmap)
+        layout.addWidget(label)
+        self.setLayout(layout)
 
 
 class YOLOPlugin:
@@ -76,10 +89,10 @@ class YOLOPlugin:
         self.object_ids = {
             "airport": 0,
             "helicopter": 1,
-            "plane": 3,
-            "oiltank": 2,
+            "aircraft": 3,
+            "storage tank": 2,
             "warship": 1,
-            "ship": 0
+            "civilian ship": 0
         }
 
     def add_action(
@@ -201,6 +214,11 @@ class YOLOPlugin:
             if layer.type() == QgsMapLayer.VectorLayer and layer.name().startswith("YOLO Detections")
         ]
 
+        self.dlg.comboBox_merge_from.clear()
+        self.dlg.comboBox_merge_from.addItems(yolo_vector_layers)
+        self.dlg.comboBox_merge_to.clear()
+        self.dlg.comboBox_merge_to.addItems(yolo_vector_layers)
+
         self.dlg.comboBox_export_layer.clear()
         self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
 
@@ -262,9 +280,14 @@ class YOLOPlugin:
                         self.models_to_run.append(second_model)
 
                 self.detect_objects()
-
             elif current_tab == 1:
                 self.handle_export()
+            elif current_tab == 2:
+                self.handle_merge()
+            elif current_tab == 3:
+                self.handle_tiling()
+            elif current_tab == 4:
+                self.handle_preview()
 
     def handle_export(self):
         """Export current map canvas image and/or YOLO detection labels.
@@ -345,10 +368,7 @@ class YOLOPlugin:
                 w = abs(norm_x_max - norm_x_min)
                 h = abs(norm_y_max - norm_y_min)
 
-                try:
-                    class_id = self.object_ids.get(feature["class"], 0)
-                except Exception:
-                    class_id = 0
+                class_id = self.object_ids.get(feature["class"], 0)
 
                 yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
 
@@ -356,6 +376,202 @@ class YOLOPlugin:
                 f.write("\n".join(yolo_lines))
 
             self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
+
+    def handle_merge(self):
+        """Copies all features from the source layer to the destination layer."""
+        from_name, to_name = self.dlg.get_merge_layers()
+        
+        if from_name == to_name:
+            self.iface.messageBar().pushMessage("Error", "Source and destination layers must be different.", level=2)
+            return
+
+        layers = QgsProject.instance().mapLayers().values()
+        source_layer = next((layer for layer in layers if layer.name() == from_name), None)
+        dest_layer = next((layer for layer in layers if layer.name() == to_name), None)
+
+        if not source_layer or not dest_layer:
+            return
+
+        # Add fields from source that don't exist in destination
+        src_fields = source_layer.fields()
+        dst_fields = dest_layer.fields()
+        missing_fields = [f for f in src_fields if dst_fields.indexFromName(f.name()) == -1]
+
+        if missing_fields:
+            dest_layer.dataProvider().addAttributes(missing_fields)
+            dest_layer.updateFields()
+            dst_fields = dest_layer.fields()
+
+        # Copy features
+        new_features = []
+        for feat in source_layer.getFeatures():
+            new_feat = QgsFeature(dst_fields)
+            new_feat.setGeometry(feat.geometry())
+            
+            for field in src_fields:
+                attr_val = feat[field.name()]
+                new_feat.setAttribute(field.name(), attr_val)
+                
+            new_features.append(new_feat)
+
+        if new_features:
+            dest_layer.startEditing()
+            success = dest_layer.addFeatures(new_features)
+            if success:
+                dest_layer.commitChanges()
+                src_renderer = source_layer.renderer()
+                dst_renderer = dest_layer.renderer()
+
+                if isinstance(src_renderer, QgsCategorizedSymbolRenderer) and isinstance(dst_renderer, QgsCategorizedSymbolRenderer):
+                    existing_dst_values = [c.value() for c in dst_renderer.categories()]
+                    changed = False
+
+                    for src_cat in src_renderer.categories():
+                        if src_cat.value() not in existing_dst_values:
+                            new_cat = QgsRendererCategory(
+                                src_cat.value(), 
+                                src_cat.symbol().clone(), 
+                                src_cat.label(),
+                                src_cat.renderState()
+                            )
+                            dst_renderer.addCategory(new_cat)
+                            changed = True
+
+                    if changed:
+                        dest_layer.triggerRepaint()
+                        self.iface.layerTreeView().refreshLayerSymbology(dest_layer.id())
+
+                self.iface.messageBar().pushMessage("Success", f"Merged {len(new_features)} features into {to_name}", level=0, duration=2)
+            else:
+                dest_layer.rollBack()
+                self.iface.messageBar().pushMessage("Error", "Failed to add features to destination layer.", level=2, duration=4)
+
+    def handle_tiling(self):
+        """Split the current map canvas into multiple image tiles with letterboxing.
+
+        Calculates a grid based on user-defined pixel dimensions. For tiles at 
+        the edges that do not fit the full dimensions, the available map area 
+        is rendered and padded with a black background (letterboxed) to 
+        maintain consistent tile sizes.
+        """
+        p = self.dlg.get_tiling_params()
+        if not p["dir"] or not os.path.isdir(p["dir"]):
+            self.iface.messageBar().pushMessage("Error", "Invalid tiling export path", level=2, duration=4)
+            return
+
+        canvas = self.iface.mapCanvas()
+        settings = QgsMapSettings(canvas.mapSettings())
+        clean_layers = []
+        for layer in settings.layers():
+            if layer.name().startswith("YOLO Detections"):
+                continue
+            clean_layers.append(layer)
+        settings.setLayers(clean_layers)
+
+        full_extent = settings.extent()
+        canvas_size = settings.outputSize()
+
+        px_w_geo = full_extent.width() / canvas_size.width()
+        px_h_geo = full_extent.height() / canvas_size.height()
+
+        t_w = p["width"]
+        t_h = p["height"]
+
+        cols = (canvas_size.width() + t_w - 1) // t_w
+        rows = (canvas_size.height() + t_h - 1) // t_h
+        total_tiles = cols * rows
+
+        if total_tiles == 0:
+            self.iface.messageBar().pushMessage("Error", "Tile size is larger than current canvas.", level=2, duration=4)
+            return
+
+        count = 0
+        for r in range(rows):
+            for c in range(cols):
+                px_x = c * t_w
+                px_y = r * t_h
+
+                actual_w = min(t_w, canvas_size.width() - px_x)
+                actual_h = min(t_h, canvas_size.height() - px_y)
+
+                x_min = full_extent.xMinimum() + (px_x * px_w_geo)
+                y_max = full_extent.yMaximum() - (px_y * px_h_geo)
+                x_max = x_min + (actual_w * px_w_geo)
+                y_min = y_max - (actual_h * px_h_geo)
+
+                tile_extent = QgsRectangle(x_min, y_min, x_max, y_max)
+                settings.setExtent(tile_extent)
+                settings.setOutputSize(QSize(actual_w, actual_h))
+
+                final_tile = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
+                final_tile.fill(QColor(0, 0, 0))
+
+                map_img = QImage(QSize(actual_w, actual_h), QImage.Format_ARGB32_Premultiplied)
+                map_img.fill(QColor(0, 0, 0, 0))
+
+                painter = QPainter(map_img)
+                job = QgsMapRendererCustomPainterJob(settings, painter)
+                job.start()
+                job.waitForFinished()
+                painter.end()
+
+                final_painter = QPainter(final_tile)
+                final_painter.drawImage(0, 0, map_img)
+                final_painter.end()
+
+                filename = f"tile_{t_w}_{count}.png"
+                final_tile.save(os.path.join(p["dir"], filename))
+
+                count += 1
+
+        self.iface.messageBar().pushMessage("Success", f"Generated {count} tiles.", level=0, duration=2)
+
+    def handle_preview(self):
+        """Read a YOLO txt file and an image, draw boxes, and show a popup."""
+        img_path, txt_path = self.dlg.get_preview_paths()
+        if not os.path.exists(img_path) or not os.path.exists(txt_path):
+            self.iface.messageBar().pushMessage("Error", "Files not found", level=2, duration=4)
+            return
+
+        img = QImage(img_path)
+        if img.isNull():
+            return
+
+        distinct_colors = [
+            QColor("red"), QColor("lime"), QColor("blue"), 
+            QColor("yellow"), QColor("cyan"), QColor("magenta"), 
+            QColor("orange"), QColor("white")
+        ]
+
+        w, h = img.width(), img.height()
+        painter = QPainter(img)
+
+        with open(txt_path, "r") as f:
+            lines = f.readlines()
+
+        for line in lines:
+            parts = line.strip().split()
+            if len(parts) != 5:
+                continue
+
+            class_id = int(parts[0])
+            box_color = distinct_colors[class_id % len(distinct_colors)]
+
+            _, xc, yc, bw, bh = map(float, parts)
+            x1 = int((xc - bw/2) * w)
+            y1 = int((yc - bh/2) * h)
+            rect_w = int(bw * w)
+            rect_h = int(bh * h)
+
+            pen = QPen(box_color)
+            pen.setWidth(3) 
+            painter.setPen(pen)
+            painter.drawRect(x1, y1, rect_w, rect_h)
+
+        painter.end()
+
+        self.preview_window = PreviewPopup(QPixmap.fromImage(img), self.iface.mainWindow())
+        self.preview_window.show()
 
     def save_layer(self, layer):
         """Persist a memory layer to a shapefile in the project directory.
@@ -382,7 +598,6 @@ class YOLOPlugin:
             new_layer.setRenderer(layer.renderer().clone())
             QgsProject.instance().addMapLayer(new_layer)
             QgsProject.instance().removeMapLayer(layer.id())
-
 
     def get_or_create_layer(self):
         """Return an existing target layer or create a new YOLO Detections memory layer.
