@@ -48,6 +48,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_detect_cancel.clicked.connect(self.reject)
         self.btn_export_save.clicked.connect(self.accept)
         self.btn_export_cancel.clicked.connect(self.reject)
+        self.btn_merge_run.clicked.connect(self.accept)
+        self.btn_merge_cancel.clicked.connect(self.reject)
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
@@ -179,3 +181,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_run_multiple(self):
         return self.checkBox_run_multiple.isChecked()
+
+    def get_merge_layers(self):
+        return self.comboBox_merge_from.currentText(), self.comboBox_merge_to.currentText()

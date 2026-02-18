@@ -201,6 +201,11 @@ class YOLOPlugin:
             if layer.type() == QgsMapLayer.VectorLayer and layer.name().startswith("YOLO Detections")
         ]
 
+        self.dlg.comboBox_merge_from.clear()
+        self.dlg.comboBox_merge_from.addItems(yolo_vector_layers)
+        self.dlg.comboBox_merge_to.clear()
+        self.dlg.comboBox_merge_to.addItems(yolo_vector_layers)
+
         self.dlg.comboBox_export_layer.clear()
         self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
 
@@ -262,9 +267,10 @@ class YOLOPlugin:
                         self.models_to_run.append(second_model)
 
                 self.detect_objects()
-
             elif current_tab == 1:
                 self.handle_export()
+            elif current_tab == 2:
+                self.handle_merge()
 
     def handle_export(self):
         """Export current map canvas image and/or YOLO detection labels.
@@ -356,6 +362,75 @@ class YOLOPlugin:
                 f.write("\n".join(yolo_lines))
 
             self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
+
+    def handle_merge(self):
+        """Copies all features from the source layer to the destination layer."""
+        from_name, to_name = self.dlg.get_merge_layers()
+        
+        if from_name == to_name:
+            self.iface.messageBar().pushMessage("Error", "Source and destination layers must be different.", level=2)
+            return
+
+        layers = QgsProject.instance().mapLayers().values()
+        source_layer = next((layer for layer in layers if layer.name() == from_name), None)
+        dest_layer = next((layer for layer in layers if layer.name() == to_name), None)
+
+        if not source_layer or not dest_layer:
+            return
+
+        # Add fields from source that don't exist in destination
+        src_fields = source_layer.fields()
+        dst_fields = dest_layer.fields()
+        missing_fields = [f for f in src_fields if dst_fields.indexFromName(f.name()) == -1]
+
+        if missing_fields:
+            dest_layer.dataProvider().addAttributes(missing_fields)
+            dest_layer.updateFields()
+            dst_fields = dest_layer.fields()
+
+        # Copy features
+        new_features = []
+        for feat in source_layer.getFeatures():
+            new_feat = QgsFeature(dst_fields)
+            new_feat.setGeometry(feat.geometry())
+            
+            for field in src_fields:
+                attr_val = feat[field.name()]
+                new_feat.setAttribute(field.name(), attr_val)
+                
+            new_features.append(new_feat)
+
+        if new_features:
+            dest_layer.startEditing()
+            success = dest_layer.addFeatures(new_features)
+            if success:
+                dest_layer.commitChanges()
+                src_renderer = source_layer.renderer()
+                dst_renderer = dest_layer.renderer()
+
+                if isinstance(src_renderer, QgsCategorizedSymbolRenderer) and isinstance(dst_renderer, QgsCategorizedSymbolRenderer):
+                    existing_dst_values = [c.value() for c in dst_renderer.categories()]
+                    changed = False
+
+                    for src_cat in src_renderer.categories():
+                        if src_cat.value() not in existing_dst_values:
+                            new_cat = QgsRendererCategory(
+                                src_cat.value(), 
+                                src_cat.symbol().clone(), 
+                                src_cat.label(),
+                                src_cat.renderState()
+                            )
+                            dst_renderer.addCategory(new_cat)
+                            changed = True
+
+                    if changed:
+                        dest_layer.triggerRepaint()
+                        self.iface.layerTreeView().refreshLayerSymbology(dest_layer.id())
+
+                self.iface.messageBar().pushMessage("Success", f"Merged {len(new_features)} features into {to_name}", level=0, duration=2)
+            else:
+                dest_layer.rollBack()
+                self.iface.messageBar().pushMessage("Error", "Failed to add features to destination layer.", level=2, duration=4)
 
     def save_layer(self, layer):
         """Persist a memory layer to a shapefile in the project directory.
