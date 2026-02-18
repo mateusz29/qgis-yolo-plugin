@@ -43,11 +43,23 @@ from qgis.core import (
     QgsRectangle
 )
 from qgis.PyQt.QtCore import QMetaType, QSize
-from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
+from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel
 from ultralytics import YOLO
 
 from .yolo_plugin_dialog import YOLOPluginDialog
+
+
+class PreviewPopup(QDialog):
+    """A simple popup window to display an image with rendered bounding boxes."""
+    def __init__(self, pixmap, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("YOLO Export Preview")
+        layout = QVBoxLayout(self)
+        label = QLabel()
+        label.setPixmap(pixmap)
+        layout.addWidget(label)
+        self.setLayout(layout)
 
 
 class YOLOPlugin:
@@ -77,10 +89,10 @@ class YOLOPlugin:
         self.object_ids = {
             "airport": 0,
             "helicopter": 1,
-            "plane": 3,
-            "oiltank": 2,
+            "aircraft": 3,
+            "storage tank": 2,
             "warship": 1,
-            "ship": 0
+            "civilian ship": 0
         }
 
     def add_action(
@@ -274,6 +286,8 @@ class YOLOPlugin:
                 self.handle_merge()
             elif current_tab == 3:
                 self.handle_tiling()
+            elif current_tab == 4:
+                self.handle_preview()
 
     def handle_export(self):
         """Export current map canvas image and/or YOLO detection labels.
@@ -354,10 +368,7 @@ class YOLOPlugin:
                 w = abs(norm_x_max - norm_x_min)
                 h = abs(norm_y_max - norm_y_min)
 
-                try:
-                    class_id = self.object_ids.get(feature["class"], 0)
-                except Exception:
-                    class_id = 0
+                class_id = self.object_ids.get(feature["class"], 0)
 
                 yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
 
@@ -514,6 +525,53 @@ class YOLOPlugin:
                 count += 1
 
         self.iface.messageBar().pushMessage("Success", f"Generated {count} tiles.", level=0, duration=2)
+
+    def handle_preview(self):
+        """Read a YOLO txt file and an image, draw boxes, and show a popup."""
+        img_path, txt_path = self.dlg.get_preview_paths()
+        if not os.path.exists(img_path) or not os.path.exists(txt_path):
+            self.iface.messageBar().pushMessage("Error", "Files not found", level=2, duration=4)
+            return
+
+        img = QImage(img_path)
+        if img.isNull():
+            return
+
+        distinct_colors = [
+            QColor("red"), QColor("lime"), QColor("blue"), 
+            QColor("yellow"), QColor("cyan"), QColor("magenta"), 
+            QColor("orange"), QColor("white")
+        ]
+
+        w, h = img.width(), img.height()
+        painter = QPainter(img)
+
+        with open(txt_path, "r") as f:
+            lines = f.readlines()
+
+        for line in lines:
+            parts = line.strip().split()
+            if len(parts) != 5:
+                continue
+
+            class_id = int(parts[0])
+            box_color = distinct_colors[class_id % len(distinct_colors)]
+
+            _, xc, yc, bw, bh = map(float, parts)
+            x1 = int((xc - bw/2) * w)
+            y1 = int((yc - bh/2) * h)
+            rect_w = int(bw * w)
+            rect_h = int(bh * h)
+
+            pen = QPen(box_color)
+            pen.setWidth(3) 
+            painter.setPen(pen)
+            painter.drawRect(x1, y1, rect_w, rect_h)
+
+        painter.end()
+
+        self.preview_window = PreviewPopup(QPixmap.fromImage(img), self.iface.mainWindow())
+        self.preview_window.show()
 
     def save_layer(self, layer):
         """Persist a memory layer to a shapefile in the project directory.

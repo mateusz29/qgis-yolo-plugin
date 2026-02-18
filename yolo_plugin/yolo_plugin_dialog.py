@@ -52,6 +52,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_merge_cancel.clicked.connect(self.reject)
         self.btn_tiling_run.clicked.connect(self.accept)
         self.btn_tiling_cancel.clicked.connect(self.reject)
+        self.btn_preview_run.clicked.connect(self.accept)
+        self.btn_preview_cancel.clicked.connect(self.reject)
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
@@ -62,6 +64,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_model2.clicked.connect(self.select_model_path2)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
         self.toolButton_tiling_dir.clicked.connect(self.select_tiling_dir)
+        self.toolButton_preview_img.clicked.connect(self.select_preview_img)
+        self.toolButton_preview_txt.clicked.connect(self.select_preview_txt)
         self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
         self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civilian ship"]
         self.default_colors = {
@@ -200,3 +204,16 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             "height": self.spinBox_tile_height.value(),
             "dir": self.lineEdit_tiling_dir.text()
         }
+
+    def select_preview_img(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg)")
+        if filename:
+            self.lineEdit_preview_img.setText(filename)
+
+    def select_preview_txt(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Labels", "", "Text Files (*.txt)")
+        if filename:
+            self.lineEdit_preview_txt.setText(filename)
+
+    def get_preview_paths(self):
+        return self.lineEdit_preview_img.text(), self.lineEdit_preview_txt.text()
