@@ -39,7 +39,8 @@ from qgis.core import (
     QgsRendererCategory,
     QgsVectorFileWriter,
     QgsVectorLayer,
-    QgsMapLayer
+    QgsMapLayer,
+    QgsRectangle
 )
 from qgis.PyQt.QtCore import QMetaType, QSize
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter
@@ -271,6 +272,8 @@ class YOLOPlugin:
                 self.handle_export()
             elif current_tab == 2:
                 self.handle_merge()
+            elif current_tab == 3:
+                self.handle_tiling()
 
     def handle_export(self):
         """Export current map canvas image and/or YOLO detection labels.
@@ -432,6 +435,77 @@ class YOLOPlugin:
                 dest_layer.rollBack()
                 self.iface.messageBar().pushMessage("Error", "Failed to add features to destination layer.", level=2, duration=4)
 
+    def handle_tiling(self):
+        """Split the current map canvas into multiple image tiles.
+
+        Calculates a grid based on user-defined pixel dimensions, renders each 
+        cell of the grid to a separate PNG image, and saves them to the 
+        specified directory. Leftover space at the right and bottom edges 
+        is ignored.
+        """
+        p = self.dlg.get_tiling_params()
+        if not p["dir"] or not os.path.isdir(p["dir"]):
+            self.iface.messageBar().pushMessage("Error", "Invalid tiling export path", level=2, duration=4)
+            return
+
+        canvas = self.iface.mapCanvas()
+        settings = QgsMapSettings(canvas.mapSettings())
+        clean_layers = []
+        for layer in settings.layers():
+            if layer.name().startswith("YOLO Detections"):
+                continue
+            clean_layers.append(layer)
+        settings.setLayers(clean_layers)
+
+        full_extent = settings.extent()
+        canvas_size = settings.outputSize()
+
+        px_w_geo = full_extent.width() / canvas_size.width()
+        px_h_geo = full_extent.height() / canvas_size.height()
+
+        t_w = p["width"]
+        t_h = p["height"]
+
+        cols = canvas_size.width() // t_w
+        rows = canvas_size.height() // t_h
+        total_tiles = cols * rows
+
+        if total_tiles == 0:
+            self.iface.messageBar().pushMessage("Error", "Tile size is larger than current canvas.", level=2, duration=4)
+            return
+
+        count = 0
+        for r in range(rows):
+            for c in range(cols):
+                px_x = c * t_w
+                px_y = r * t_h
+
+                x_min = full_extent.xMinimum() + (px_x * px_w_geo)
+                y_max = full_extent.yMaximum() - (px_y * px_h_geo)
+                x_max = x_min + (t_w * px_w_geo)
+                y_min = y_max - (t_h * px_h_geo)
+
+                tile_extent = QgsRectangle(x_min, y_min, x_max, y_max)
+
+                settings.setExtent(tile_extent)
+                settings.setOutputSize(QSize(t_w, t_h))
+
+                img = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
+                img.fill(QColor(0, 0, 0, 0))
+
+                painter = QPainter(img)
+                job = QgsMapRendererCustomPainterJob(settings, painter)
+                job.start()
+                job.waitForFinished()
+                painter.end()
+
+                filename = f"tile_{t_w}_{count}.png"
+                img.save(os.path.join(p["dir"], filename))
+
+                count += 1
+
+        self.iface.messageBar().pushMessage("Success", f"Generated {count} tiles.", level=0, duration=2)
+
     def save_layer(self, layer):
         """Persist a memory layer to a shapefile in the project directory.
 
@@ -457,7 +531,6 @@ class YOLOPlugin:
             new_layer.setRenderer(layer.renderer().clone())
             QgsProject.instance().addMapLayer(new_layer)
             QgsProject.instance().removeMapLayer(layer.id())
-
 
     def get_or_create_layer(self):
         """Return an existing target layer or create a new YOLO Detections memory layer.

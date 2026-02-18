@@ -50,6 +50,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_export_cancel.clicked.connect(self.reject)
         self.btn_merge_run.clicked.connect(self.accept)
         self.btn_merge_cancel.clicked.connect(self.reject)
+        self.btn_tiling_run.clicked.connect(self.accept)
+        self.btn_tiling_cancel.clicked.connect(self.reject)
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
@@ -59,6 +61,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
+        self.toolButton_tiling_dir.clicked.connect(self.select_tiling_dir)
         self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
         self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civilian ship"]
         self.default_colors = {
@@ -104,6 +107,12 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         directory = QFileDialog.getExistingDirectory(self, "Select Export Directory")
         if directory:
             self.lineEdit_export_dir.setText(directory)
+
+    def select_tiling_dir(self):
+        """Open a directory chooser and set the tiling export directory field."""
+        directory = QFileDialog.getExistingDirectory(self, "Select Tiling Export Directory")
+        if directory:
+            self.lineEdit_tiling_dir.setText(directory)
 
     def select_color(self, class_name, kind):
         """Show a QColorDialog and store the selected color for class rendering.
@@ -184,3 +193,10 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_merge_layers(self):
         return self.comboBox_merge_from.currentText(), self.comboBox_merge_to.currentText()
+
+    def get_tiling_params(self):
+        return {
+            "width": self.spinBox_tile_width.value(),
+            "height": self.spinBox_tile_height.value(),
+            "dir": self.lineEdit_tiling_dir.text()
+        }
