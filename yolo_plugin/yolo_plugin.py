@@ -436,12 +436,12 @@ class YOLOPlugin:
                 self.iface.messageBar().pushMessage("Error", "Failed to add features to destination layer.", level=2, duration=4)
 
     def handle_tiling(self):
-        """Split the current map canvas into multiple image tiles.
+        """Split the current map canvas into multiple image tiles with letterboxing.
 
-        Calculates a grid based on user-defined pixel dimensions, renders each 
-        cell of the grid to a separate PNG image, and saves them to the 
-        specified directory. Leftover space at the right and bottom edges 
-        is ignored.
+        Calculates a grid based on user-defined pixel dimensions. For tiles at 
+        the edges that do not fit the full dimensions, the available map area 
+        is rendered and padded with a black background (letterboxed) to 
+        maintain consistent tile sizes.
         """
         p = self.dlg.get_tiling_params()
         if not p["dir"] or not os.path.isdir(p["dir"]):
@@ -466,8 +466,8 @@ class YOLOPlugin:
         t_w = p["width"]
         t_h = p["height"]
 
-        cols = canvas_size.width() // t_w
-        rows = canvas_size.height() // t_h
+        cols = (canvas_size.width() + t_w - 1) // t_w
+        rows = (canvas_size.height() + t_h - 1) // t_h
         total_tiles = cols * rows
 
         if total_tiles == 0:
@@ -480,27 +480,36 @@ class YOLOPlugin:
                 px_x = c * t_w
                 px_y = r * t_h
 
+                actual_w = min(t_w, canvas_size.width() - px_x)
+                actual_h = min(t_h, canvas_size.height() - px_y)
+
                 x_min = full_extent.xMinimum() + (px_x * px_w_geo)
                 y_max = full_extent.yMaximum() - (px_y * px_h_geo)
-                x_max = x_min + (t_w * px_w_geo)
-                y_min = y_max - (t_h * px_h_geo)
+                x_max = x_min + (actual_w * px_w_geo)
+                y_min = y_max - (actual_h * px_h_geo)
 
                 tile_extent = QgsRectangle(x_min, y_min, x_max, y_max)
-
                 settings.setExtent(tile_extent)
-                settings.setOutputSize(QSize(t_w, t_h))
+                settings.setOutputSize(QSize(actual_w, actual_h))
 
-                img = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
-                img.fill(QColor(0, 0, 0, 0))
+                final_tile = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
+                final_tile.fill(QColor(0, 0, 0))
 
-                painter = QPainter(img)
+                map_img = QImage(QSize(actual_w, actual_h), QImage.Format_ARGB32_Premultiplied)
+                map_img.fill(QColor(0, 0, 0, 0))
+
+                painter = QPainter(map_img)
                 job = QgsMapRendererCustomPainterJob(settings, painter)
                 job.start()
                 job.waitForFinished()
                 painter.end()
 
+                final_painter = QPainter(final_tile)
+                final_painter.drawImage(0, 0, map_img)
+                final_painter.end()
+
                 filename = f"tile_{t_w}_{count}.png"
-                img.save(os.path.join(p["dir"], filename))
+                final_tile.save(os.path.join(p["dir"], filename))
 
                 count += 1
 
