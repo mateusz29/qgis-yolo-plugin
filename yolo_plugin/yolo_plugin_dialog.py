@@ -67,14 +67,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_preview_img.clicked.connect(self.select_preview_img)
         self.toolButton_preview_txt.clicked.connect(self.select_preview_txt)
         self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
-        self.display_class_names = ["airport", "helicopter", "storage tank", "aircraft", "warship", "civilian ship"]
+        #self.display_class_names = ["plane", "bridge", "airport", "harbor", "vehicle", "ship"]
         self.default_colors = {
-            "airport": "blue",
-            "helicopter": "orange",
-            "aircraft": "yellow",
-            "storage tank": "red",
-            "warship": "cyan",
-            "civilian ship": "magenta"
+            "plane": "blue",
+            "bridge": "orange",
+            "airport": "yellow",
+            "harbor": "red",
+            "vehicle": "cyan",
+            "ship": "magenta"
         }
         self.color_buttons = {}
         self.populate_color_pickers()
@@ -87,14 +87,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         Each class gets outline and fill buttons that let the user choose
         colors used when rendering detection polygons.
         """
-        for class_name in self.display_class_names:
+        for class_name, default_color in self.default_colors.items():
             layout = QHBoxLayout()
             label = QLabel(class_name)
             outline_btn = QPushButton()
             fill_btn = QPushButton()
 
-            outline_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
-            fill_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
+            outline_btn.setStyleSheet(f"background-color: {default_color}")
+            fill_btn.setStyleSheet(f"background-color: {default_color}")
 
             outline_btn.clicked.connect(partial(self.select_color, class_name, "outline"))
             fill_btn.clicked.connect(partial(self.select_color, class_name, "fill"))
@@ -135,8 +135,8 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         Falls back to the configured defaults when the user did not choose a color.
         """
         colors = {}
-        for class_name in self.display_class_names:
-            default_hex = QColor(self.default_colors.get(class_name, "black")).name()
+        for class_name, default_color in self.default_colors.items():
+            default_hex = QColor(default_color).name()
             colors[class_name] = {
                 "outline": self.color_buttons[class_name].get("outline_hex", default_hex),
                 "fill": self.color_buttons[class_name].get("fill_hex", default_hex)

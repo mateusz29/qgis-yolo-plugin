@@ -78,21 +78,13 @@ class YOLOPlugin:
         self.menu = "&YOLO Plugin"
         self.model_cache = {}
         self.last_selected_layer_name = None
-        self.object_names = {
-            "airport": "airport",
-            "helicopter": "helicopter",
-            "plane": "aircraft",
-            "oiltank": "storage tank",
-            "warship": "warship",
-            "ship": "civilian ship"
-        }
         self.object_ids = {
-            "airport": 0,
-            "helicopter": 1,
-            "aircraft": 3,
-            "storage tank": 2,
-            "warship": 1,
-            "civilian ship": 0
+            "plane": 0,
+            "bridge": 1,
+            "airport": 2,
+            "harbor": 3,
+            "vehicle": 4,
+            "ship": 5
         }
 
     def add_action(
@@ -702,7 +694,7 @@ class YOLOPlugin:
                     y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
                     raw_name = r.names[int(r.boxes.cls[i].item())]
-                    class_name = self.object_names.get(raw_name)
+                    class_name = raw_name.lower()
                     detected_classes.add(class_name)
 
                     feat = QgsFeature()
