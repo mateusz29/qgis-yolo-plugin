@@ -8,7 +8,7 @@
                              -------------------
         begin                : 2025-04-26
         git sha              : $Format:%H$
-        copyright            : (C) 2025 by Marcin Ciecholewski
+        copyright            : (C) 2025 by Mateusz Strzelecki, Miraslau Farelnik, and Marcin Ciecholewski
         email                :  marcin.ciecholewski@pg.edu.pl
 
  ***************************************************************************/
