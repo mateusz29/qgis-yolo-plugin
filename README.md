@@ -103,9 +103,15 @@ The YOLO-MOD plugin provides an export interface for layer data, including:
 - source layer selection.
 <img src="assets/plugin_save_data.png" alt="GUI" width="50%">
 
-he YOLO-MOD plugin interface enables:
--previewing previously saved detection and classification results using a raster image file (.png) and the corresponding YOLO-format annotation file (.txt).
+The YOLO-MOD plugin interface enables:
+- Preview saved detections using a raster image (.png) and the corresponding YOLO annotation file (.txt).
 <img src="assets/plugin_exp_preview.png" alt="GUI" width="50%">
+
+Merge detection results from multiple layers by selecting a source and target layer. The merged output is saved to the target layer.
+<img src="assets/plugin_merge_layers.png" alt="GUI" width="50%">
+
+Automatically split the current QGIS map extent into image tiles based on user-defined width, height, and output directory.
+<img src="assets/plugin_canvas tiling.png" alt="GUI" width="50%">
 
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
