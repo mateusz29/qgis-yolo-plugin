@@ -112,6 +112,7 @@ Merge detection results from multiple layers by selecting a source and target la
 <img src="assets/plugin_merge_layers.png" alt="GUI" width="50%">
 
 Automatically split the current QGIS map extent into image tiles based on user-defined width, height, and output directory.
+
 <img src="assets/plugin_canvas tiling.png" alt="GUI" width="50%">
 
 ## Illustrative examples
