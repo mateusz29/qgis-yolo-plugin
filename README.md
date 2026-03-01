@@ -108,6 +108,7 @@ The YOLO-MOD plugin interface enables:
 <img src="assets/plugin_exp_preview.png" alt="GUI" width="50%">
 
 Merge detection results from multiple layers by selecting a source and target layer. The merged output is saved to the target layer.
+
 <img src="assets/plugin_merge_layers.png" alt="GUI" width="50%">
 
 Automatically split the current QGIS map extent into image tiles based on user-defined width, height, and output directory.
