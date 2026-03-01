@@ -103,6 +103,10 @@ The YOLO-MOD plugin provides an export interface for layer data, including:
 - source layer selection.
 <img src="assets/plugin_save_data.png" alt="GUI" width="50%">
 
+he YOLO-MOD plugin interface enables:
+-previewing previously saved detection and classification results using a raster image file (.png) and the corresponding YOLO-format annotation file (.txt).
+<img src="assets/plugin_exp_preview.png" alt="GUI" width="50%">
+
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
 
