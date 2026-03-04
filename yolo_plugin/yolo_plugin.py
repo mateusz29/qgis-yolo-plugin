@@ -281,13 +281,13 @@ class YOLOPlugin:
 
                 self.detect_objects()
             elif current_tab == 1:
-                self.handle_export()
-            elif current_tab == 2:
                 self.handle_merge()
+            elif current_tab == 2:
+                self.handle_export()
             elif current_tab == 3:
-                self.handle_tiling()
-            elif current_tab == 4:
                 self.handle_preview()
+            elif current_tab == 4:
+                self.handle_tiling()
 
     def handle_export(self):
         """Export current map canvas image and/or YOLO detection labels.
