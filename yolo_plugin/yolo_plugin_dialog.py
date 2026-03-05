@@ -57,6 +57,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
+        self.btn_tiling_run.setText("Preview && Start Tiling")
         self.checkBox_run_multiple.stateChanged.connect(
             lambda state: self.set_multiple_models_enabled(state == 2)
         )
@@ -204,6 +205,9 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             "height": self.spinBox_tile_height.value(),
             "dir": self.lineEdit_tiling_dir.text()
         }
+
+    def set_canvas_resolution_display(self, width, height):
+        self.label_canvas_res_value.setText(f"{width} x {height} px")
 
     def select_preview_img(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg)")

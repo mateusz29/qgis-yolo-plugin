@@ -545,33 +545,43 @@
           <number>6</number>
           </property>
           <item row="0" column="0">
-          <widget class="QLabel">
-            <property name="text"><string>Tile Width (px):</string></property>
+          <widget class="QLabel" name="label_canvas_res">
+            <property name="text"><string>Canvas Resolution:</string></property>
           </widget>
           </item>
           <item row="0" column="1">
-          <widget class="QSpinBox" name="spinBox_tile_width">
-            <property name="maximum"><number>5000</number></property>
-            <property name="value"><number>128</number></property>
+          <widget class="QLabel" name="label_canvas_res_value">
+            <property name="text"><string>0 x 0 px</string></property>
           </widget>
           </item>
           <item row="1" column="0">
           <widget class="QLabel">
-            <property name="text"><string>Tile Height (px):</string></property>
+            <property name="text"><string>Tile Width (px):</string></property>
           </widget>
           </item>
           <item row="1" column="1">
-          <widget class="QSpinBox" name="spinBox_tile_height">
+          <widget class="QSpinBox" name="spinBox_tile_width">
             <property name="maximum"><number>5000</number></property>
             <property name="value"><number>128</number></property>
           </widget>
           </item>
           <item row="2" column="0">
           <widget class="QLabel">
-            <property name="text"><string>Save to:</string></property>
+            <property name="text"><string>Tile Height (px):</string></property>
           </widget>
           </item>
           <item row="2" column="1">
+          <widget class="QSpinBox" name="spinBox_tile_height">
+            <property name="maximum"><number>5000</number></property>
+            <property name="value"><number>128</number></property>
+          </widget>
+          </item>
+          <item row="3" column="0">
+          <widget class="QLabel">
+            <property name="text"><string>Save to:</string></property>
+          </widget>
+          </item>
+          <item row="3" column="1">
           <layout class="QHBoxLayout">
             <item><widget class="QLineEdit" name="lineEdit_tiling_dir"/></item>
             <item>
@@ -600,7 +610,7 @@
           </item>
           <item>
           <widget class="QPushButton" name="btn_tiling_run">
-            <property name="text"><string>Start Tiling</string></property>
+            <property name="text"><string>Preview and Start Tiling</string></property>
           </widget>
           </item>
           <item>

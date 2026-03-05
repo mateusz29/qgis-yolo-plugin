@@ -42,9 +42,9 @@ from qgis.core import (
     QgsMapLayer,
     QgsRectangle
 )
-from qgis.PyQt.QtCore import QMetaType, QSize
+from qgis.PyQt.QtCore import QMetaType, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
-from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel
+from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel, QDialogButtonBox
 from ultralytics import YOLO
 
 from .yolo_plugin_dialog import YOLOPluginDialog
@@ -246,6 +246,9 @@ class YOLOPlugin:
         if saved_layer_name in layer_names:
             index = layer_names.index(saved_layer_name)
             self.dlg.comboBox.setCurrentIndex(index)
+
+        canvas_size = self.iface.mapCanvas().size()
+        self.dlg.set_canvas_resolution_display(canvas_size.width(), canvas_size.height())
 
         self.dlg.show()
         result = self.dlg.exec_()
@@ -460,6 +463,56 @@ class YOLOPlugin:
             return
 
         canvas = self.iface.mapCanvas()
+        canvas_size = canvas.size()
+        t_w, t_h = p["width"], p["height"]
+
+        cols = (canvas_size.width() + t_w - 1) // t_w
+        rows = (canvas_size.height() + t_h - 1) // t_h
+
+        preview_size = QSize(cols * t_w, rows * t_h)
+        preview_img = QImage(preview_size, QImage.Format_ARGB32_Premultiplied)
+        preview_img.fill(QColor(0, 0, 0))
+    
+        settings = QgsMapSettings(canvas.mapSettings())
+        clean_layers = []
+        for layer in settings.layers():
+            if layer.name().startswith("YOLO Detections"):
+                continue
+            clean_layers.append(layer)
+        settings.setLayers(clean_layers)
+
+        painter = QPainter(preview_img)
+        job = QgsMapRendererCustomPainterJob(settings, painter)
+        job.start()
+        job.waitForFinished()
+
+        pen = QPen(QColor(255, 255, 0))
+        pen.setWidth(2)
+        painter.setPen(pen)
+
+        for r in range(rows):
+            for c in range(cols):
+                px_x = c * t_w
+                px_y = r * t_h
+                painter.drawRect(px_x, px_y, t_w, t_h)
+
+        painter.end()
+
+        pixmap = QPixmap.fromImage(preview_img)
+        if pixmap.width() > 800 or pixmap.height() > 600:
+            pixmap = pixmap.scaled(800, 600, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        preview = PreviewPopup(pixmap, self.iface.mainWindow())
+        preview.setWindowTitle("Tiling Preview")
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonBox.accepted.connect(preview.accept)
+        buttonBox.rejected.connect(preview.reject)
+        preview.layout().addWidget(buttonBox)
+
+        if preview.exec_() != QDialog.Accepted:
+            return
+
         settings = QgsMapSettings(canvas.mapSettings())
         clean_layers = []
         for layer in settings.layers():
