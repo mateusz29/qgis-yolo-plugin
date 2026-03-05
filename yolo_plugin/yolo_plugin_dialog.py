@@ -57,6 +57,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
+        self.btn_tiling_run.setText("Preview && Start Tiling")
         self.checkBox_run_multiple.stateChanged.connect(
             lambda state: self.set_multiple_models_enabled(state == 2)
         )
@@ -80,6 +81,21 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.populate_color_pickers()
         self.checkBox_fill.stateChanged.connect(self.update_transparency_enabled)
         self.update_transparency_enabled()
+
+    def _select_path(self, line_edit, title, is_dir=False, file_filter="", use_settings=True):
+        """Generic helper for selecting a file or directory path."""
+        settings = QgsSettings()
+        last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~")) if use_settings else ""
+        
+        if is_dir:
+            path = QFileDialog.getExistingDirectory(self, title, last_dir)
+        else:
+            path, _ = QFileDialog.getOpenFileName(self, title, last_dir, file_filter)
+        
+        if path:
+            line_edit.setText(path)
+            if use_settings and not is_dir:
+                settings.setValue("YOLOPlugin/last_model_dir", os.path.dirname(path))
 
     def populate_color_pickers(self):
         """Create color picker buttons for each object class.
@@ -108,15 +124,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def select_export_dir(self):
         """Open a directory chooser and set the export directory field."""
-        directory = QFileDialog.getExistingDirectory(self, "Select Export Directory")
-        if directory:
-            self.lineEdit_export_dir.setText(directory)
+        self._select_path(self.lineEdit_export_dir, "Select Export Directory", is_dir=True, use_settings=False)
 
     def select_tiling_dir(self):
         """Open a directory chooser and set the tiling export directory field."""
-        directory = QFileDialog.getExistingDirectory(self, "Select Tiling Export Directory")
-        if directory:
-            self.lineEdit_tiling_dir.setText(directory)
+        self._select_path(self.lineEdit_tiling_dir, "Select Tiling Export Directory", is_dir=True, use_settings=False)
 
     def select_color(self, class_name, kind):
         """Show a QColorDialog and store the selected color for class rendering.
@@ -135,11 +147,12 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         Falls back to the configured defaults when the user did not choose a color.
         """
         colors = {}
-        for class_name, default_color in self.default_colors.items():
+        for name, default_color in self.default_colors.items():
             default_hex = QColor(default_color).name()
-            colors[class_name] = {
-                "outline": self.color_buttons[class_name].get("outline_hex", default_hex),
-                "fill": self.color_buttons[class_name].get("fill_hex", default_hex)
+            btn_data = self.color_buttons[name]
+            colors[name] = {
+                "outline": btn_data.get("outline_hex", default_hex),
+                "fill": btn_data.get("fill_hex", default_hex)
             }
         return colors
 
@@ -166,23 +179,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def select_model_path(self):
         """Open a file dialog to select the primary YOLO model file and remember its folder."""
-        settings = QgsSettings()
-        last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
-        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
-        if filename:
-            self.lineEdit_model1.setText(filename)
-            new_dir = os.path.dirname(filename)
-            settings.setValue("YOLOPlugin/last_model_dir", new_dir)
+        self._select_path(self.lineEdit_model1, "Select YOLO Model", file_filter="*.pt *.onnx")
 
     def select_model_path2(self):
         """Open a file dialog to select the secondary YOLO model file (optional)."""
-        settings = QgsSettings()
-        last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~"))
-        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Model", last_dir, "*.pt *.onnx")
-        if filename:
-            self.lineEdit_model2.setText(filename)
-            new_dir = os.path.dirname(filename)
-            settings.setValue("YOLOPlugin/last_model_dir", new_dir)
+        self._select_path(self.lineEdit_model2, "Select YOLO Model", file_filter="*.pt *.onnx")
 
     def set_multiple_models_enabled(self, enabled):
         """Enable or disable the secondary model UI controls based on checkbox state."""
@@ -205,15 +206,14 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             "dir": self.lineEdit_tiling_dir.text()
         }
 
+    def set_canvas_resolution_display(self, width, height):
+        self.label_canvas_res_value.setText(f"{width} x {height} px")
+
     def select_preview_img(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg)")
-        if filename:
-            self.lineEdit_preview_img.setText(filename)
+        self._select_path(self.lineEdit_preview_img, "Select Image", file_filter="Images (*.png *.jpg)", use_settings=False)
 
     def select_preview_txt(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "Select YOLO Labels", "", "Text Files (*.txt)")
-        if filename:
-            self.lineEdit_preview_txt.setText(filename)
+        self._select_path(self.lineEdit_preview_txt, "Select YOLO Labels", file_filter="Text Files (*.txt)", use_settings=False)
 
     def get_preview_paths(self):
         return self.lineEdit_preview_img.text(), self.lineEdit_preview_txt.text()
