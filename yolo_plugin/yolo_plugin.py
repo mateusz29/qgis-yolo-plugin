@@ -95,6 +95,37 @@ class YOLOPlugin:
             "civilian ship": 0
         }
 
+    def _get_layer_by_name(self, name):
+        """Helper to find a map layer by its name."""
+        layers = QgsProject.instance().mapLayersByName(name)
+        return layers[0] if layers else None
+
+    def _push_message(self, title, message, level=0, duration=2):
+        """Helper to push messages to the QGIS message bar."""
+        self.iface.messageBar().pushMessage(title, message, level=level, duration=duration)
+
+    def _get_filtered_layers(self, exclude_layer_name=None):
+        """Helper to get map layers while excluding YOLO detection layers."""
+        clean_layers = []
+        for layer in self.iface.mapCanvas().mapSettings().layers():
+            if exclude_layer_name and layer.name() == exclude_layer_name:
+                continue
+            if layer.name().startswith("YOLO Detections"):
+                continue
+            clean_layers.append(layer)
+        return clean_layers
+
+    def _render_to_image(self, settings, width, height, transparent=True):
+        """Helper to render map settings to a QImage."""
+        image = QImage(QSize(width, height), QImage.Format_ARGB32_Premultiplied)
+        image.fill(QColor(0, 0, 0, 0) if transparent else QColor(0, 0, 0))
+        painter = QPainter(image)
+        job = QgsMapRendererCustomPainterJob(settings, painter)
+        job.start()
+        job.waitForFinished()
+        painter.end()
+        return image
+
     def add_action(
         self,
         icon_path,
@@ -189,7 +220,7 @@ class YOLOPlugin:
         """
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
-                self.iface.messageBar().pushMessage("Error", f"Invalid model path: {model_path}", level=2, duration=4)
+                self._push_message("Error", f"Invalid model path: {model_path}", level=2, duration=4)
                 return None
             self.model_cache[model_path] = YOLO(model_path)
         return self.model_cache[model_path]
@@ -257,10 +288,7 @@ class YOLOPlugin:
             current_tab = self.dlg.tabWidget.currentIndex()
             if current_tab == 0:
                 selected_layer_name = self.dlg.comboBox.currentText()
-                for layer in QgsProject.instance().mapLayers().values():
-                    if layer.name() == selected_layer_name:
-                        self.selectedLayer = layer
-                        break
+                self.selectedLayer = self._get_layer_by_name(selected_layer_name)
 
                 if not self.selectedLayer:
                     return
@@ -277,7 +305,7 @@ class YOLOPlugin:
                 if self.dlg.get_run_multiple():
                     second_model = self.dlg.get_second_model_path()
                     if second_model == self.dlg.lineEdit_model1.text():
-                        self.iface.messageBar().pushMessage("Error", "Models are the same.", level=2, duration=4)
+                        self._push_message("Error", "Models are the same.", level=2, duration=4)
                         return
                     if second_model:
                         self.models_to_run.append(second_model)
@@ -300,7 +328,7 @@ class YOLOPlugin:
         """
         export_dir = self.dlg.lineEdit_export_dir.text()
         if not export_dir or not os.path.isdir(export_dir):
-            self.iface.messageBar().pushMessage("Error", "Invalid export directory.", level=2, duration=4)
+            self._push_message("Error", "Invalid export directory.", level=2, duration=4)
             return
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -312,40 +340,20 @@ class YOLOPlugin:
         if self.dlg.checkBox_save_canvas.isChecked():
             img_path = os.path.join(export_dir, f"{base_filename}.png")
             settings = canvas.mapSettings()
-
             export_layer_name = self.dlg.comboBox_export_layer.currentText()
-            clean_layers = []
-            for layer in settings.layers():
-                if layer.name() == export_layer_name:
-                    continue
-                if layer.name().startswith("YOLO Detections"):
-                    continue
-                clean_layers.append(layer)
-            settings.setLayers(clean_layers)
+            settings.setLayers(self._get_filtered_layers(exclude_layer_name=export_layer_name))
 
-            image = QImage(settings.outputSize(), QImage.Format_ARGB32_Premultiplied)
-            image.fill(QColor(0, 0, 0, 0))
-
-            painter = QPainter(image)
-            job = QgsMapRendererCustomPainterJob(settings, painter)
-            job.start()
-            job.waitForFinished()
-            painter.end()
-
+            image = self._render_to_image(settings, settings.outputSize().width(), settings.outputSize().height())
             image.save(img_path)
-            self.iface.messageBar().pushMessage("Export", f"Image saved: {base_filename}.png", level=0, duration=2)
+            self._push_message("Export", f"Image saved: {base_filename}.png", level=0, duration=2)
 
         # If user requested saving YOLO labels, write a .txt file with normalized bboxes
         if self.dlg.checkBox_save_yolo.isChecked():
             selected_layer_name = self.dlg.comboBox_export_layer.currentText()
-            target_layer = None
-            for layer in QgsProject.instance().mapLayers().values():
-                if layer.name() == selected_layer_name:
-                    target_layer = layer
-                    break
+            target_layer = self._get_layer_by_name(selected_layer_name)
 
             if not target_layer:
-                self.iface.messageBar().pushMessage("Error", "Selected export layer not found.", level=2, duration=4)
+                self._push_message("Error", "Selected export layer not found.", level=2, duration=4)
                 return
 
             txt_path = os.path.join(export_dir, f"{base_filename}.txt")
@@ -378,19 +386,18 @@ class YOLOPlugin:
             with open(txt_path, "w") as f:
                 f.write("\n".join(yolo_lines))
 
-            self.iface.messageBar().pushMessage("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
+            self._push_message("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
 
     def handle_merge(self):
         """Copies all features from the source layer to the destination layer."""
         from_name, to_name = self.dlg.get_merge_layers()
         
         if from_name == to_name:
-            self.iface.messageBar().pushMessage("Error", "Source and destination layers must be different.", level=2)
+            self._push_message("Error", "Source and destination layers must be different.", level=2)
             return
 
-        layers = QgsProject.instance().mapLayers().values()
-        source_layer = next((layer for layer in layers if layer.name() == from_name), None)
-        dest_layer = next((layer for layer in layers if layer.name() == to_name), None)
+        source_layer = self._get_layer_by_name(from_name)
+        dest_layer = self._get_layer_by_name(to_name)
 
         if not source_layer or not dest_layer:
             return
@@ -444,10 +451,10 @@ class YOLOPlugin:
                         dest_layer.triggerRepaint()
                         self.iface.layerTreeView().refreshLayerSymbology(dest_layer.id())
 
-                self.iface.messageBar().pushMessage("Success", f"Merged {len(new_features)} features into {to_name}", level=0, duration=2)
+                self._push_message("Success", f"Merged {len(new_features)} features into {to_name}", level=0, duration=2)
             else:
                 dest_layer.rollBack()
-                self.iface.messageBar().pushMessage("Error", "Failed to add features to destination layer.", level=2, duration=4)
+                self._push_message("Error", "Failed to add features to destination layer.", level=2, duration=4)
 
     def handle_tiling(self):
         """Split the current map canvas into multiple image tiles with letterboxing.
@@ -459,7 +466,7 @@ class YOLOPlugin:
         """
         p = self.dlg.get_tiling_params()
         if not p["dir"] or not os.path.isdir(p["dir"]):
-            self.iface.messageBar().pushMessage("Error", "Invalid tiling export path", level=2, duration=4)
+            self._push_message("Error", "Invalid tiling export path", level=2, duration=4)
             return
 
         canvas = self.iface.mapCanvas()
@@ -470,22 +477,11 @@ class YOLOPlugin:
         rows = (canvas_size.height() + t_h - 1) // t_h
 
         preview_size = QSize(cols * t_w, rows * t_h)
-        preview_img = QImage(preview_size, QImage.Format_ARGB32_Premultiplied)
-        preview_img.fill(QColor(0, 0, 0))
-    
         settings = QgsMapSettings(canvas.mapSettings())
-        clean_layers = []
-        for layer in settings.layers():
-            if layer.name().startswith("YOLO Detections"):
-                continue
-            clean_layers.append(layer)
-        settings.setLayers(clean_layers)
+        settings.setLayers(self._get_filtered_layers())
+        preview_img = self._render_to_image(settings, preview_size.width(), preview_size.height(), transparent=False)
 
         painter = QPainter(preview_img)
-        job = QgsMapRendererCustomPainterJob(settings, painter)
-        job.start()
-        job.waitForFinished()
-
         pen = QPen(QColor(255, 255, 0))
         pen.setWidth(2)
         painter.setPen(pen)
@@ -514,12 +510,7 @@ class YOLOPlugin:
             return
 
         settings = QgsMapSettings(canvas.mapSettings())
-        clean_layers = []
-        for layer in settings.layers():
-            if layer.name().startswith("YOLO Detections"):
-                continue
-            clean_layers.append(layer)
-        settings.setLayers(clean_layers)
+        settings.setLayers(self._get_filtered_layers())
 
         full_extent = settings.extent()
         canvas_size = settings.outputSize()
@@ -535,7 +526,7 @@ class YOLOPlugin:
         total_tiles = cols * rows
 
         if total_tiles == 0:
-            self.iface.messageBar().pushMessage("Error", "Tile size is larger than current canvas.", level=2, duration=4)
+            self._push_message("Error", "Tile size is larger than current canvas.", level=2, duration=4)
             return
 
         count = 0
@@ -556,17 +547,10 @@ class YOLOPlugin:
                 settings.setExtent(tile_extent)
                 settings.setOutputSize(QSize(actual_w, actual_h))
 
+                map_img = self._render_to_image(settings, actual_w, actual_h)
+
                 final_tile = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
                 final_tile.fill(QColor(0, 0, 0))
-
-                map_img = QImage(QSize(actual_w, actual_h), QImage.Format_ARGB32_Premultiplied)
-                map_img.fill(QColor(0, 0, 0, 0))
-
-                painter = QPainter(map_img)
-                job = QgsMapRendererCustomPainterJob(settings, painter)
-                job.start()
-                job.waitForFinished()
-                painter.end()
 
                 final_painter = QPainter(final_tile)
                 final_painter.drawImage(0, 0, map_img)
@@ -577,13 +561,13 @@ class YOLOPlugin:
 
                 count += 1
 
-        self.iface.messageBar().pushMessage("Success", f"Generated {count} tiles.", level=0, duration=2)
+        self._push_message("Success", f"Generated {count} tiles.", level=0, duration=2)
 
     def handle_preview(self):
         """Read a YOLO txt file and an image, draw boxes, and show a popup."""
         img_path, txt_path = self.dlg.get_preview_paths()
         if not os.path.exists(img_path) or not os.path.exists(txt_path):
-            self.iface.messageBar().pushMessage("Error", "Files not found", level=2, duration=4)
+            self._push_message("Error", "Files not found", level=2, duration=4)
             return
 
         img = QImage(img_path)
@@ -633,7 +617,7 @@ class YOLOPlugin:
         """
         project_path = QgsProject.instance().fileName()
         if not project_path:
-            self.iface.messageBar().pushMessage("Warning", "Project not saved. Please save the project to store the YOLO detection layer.", level=1, duration=3)
+            self._push_message("Warning", "Project not saved. Please save the project to store the YOLO detection layer.", level=1, duration=3)
             return
 
         project_dir = os.path.dirname(project_path)
@@ -680,14 +664,10 @@ class YOLOPlugin:
             QgsProject.instance().addMapLayer(layer)
         else:
             target_name = self.dlg.get_target_layer_name()
-            layer = None
-            for lyr in QgsProject.instance().mapLayers().values():
-                if lyr.name() == target_name:
-                    layer = lyr
-                    break
+            layer = self._get_layer_by_name(target_name)
 
             if layer is None:
-                self.iface.messageBar().pushMessage("Error", "Target layer not found, creating new.", level=2, duration=4)
+                self._push_message("Error", "Target layer not found, creating new.", level=2, duration=4)
                 return self.get_or_create_layer()
 
             if layer.fields().indexFromName("class") == -1:
@@ -708,15 +688,7 @@ class YOLOPlugin:
         settings.setOutputSize(QSize(canvas.width(), canvas.height()))
         settings.setDestinationCrs(canvas.mapSettings().destinationCrs())
         settings.setLayers([layer])
-
-        image = QImage(canvas.width(), canvas.height(), QImage.Format_ARGB32_Premultiplied)
-        image.fill(0)
-        painter = QPainter(image)
-        job = QgsMapRendererCustomPainterJob(settings, painter)
-        job.start()
-        job.waitForFinished()
-        painter.end()
-        return image
+        return self._render_to_image(settings, canvas.width(), canvas.height())
 
     def detect_objects(self):
         """Run YOLO inference on the rendered image and create polygon features.
@@ -764,7 +736,7 @@ class YOLOPlugin:
                     features.append(feat)
 
         if not features:
-            self.iface.messageBar().pushMessage("No objects detected", level=1, duration=2)
+            self._push_message("No objects detected", level=1, duration=2)
             return
 
         layer = self.get_or_create_layer()
@@ -802,4 +774,4 @@ class YOLOPlugin:
         layer.setRenderer(QgsCategorizedSymbolRenderer("class", categories))
         layer.triggerRepaint()
         self.save_layer(layer)
-        self.iface.messageBar().pushMessage("Success", f"Detected {len(features)} object(s).", level=0, duration=2)
+        self._push_message("Success", f"Detected {len(features)} object(s).", level=0, duration=2)
