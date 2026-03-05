@@ -54,7 +54,7 @@ These images show grids of sample images from test sets with bounding boxes and 
 
 ## Plugin Installation
 
-1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/HZVHnArb#dk5K8gnOUBcIaAdBrJtFJ4zfy6bX7RkaYLsVSBbVuu8)**
+1. Download the plugin ZIP: **[yolo_plugin.zip](https://mega.nz/file/2FkxwT4Q#CTQ6K70NuftbiK84Z-kDIIzTqAeMgf9Ja71KCpV7W8g)**
 
 2. Run **QGIS**.
 
@@ -102,6 +102,18 @@ The YOLO-MOD plugin provides an export interface for layer data, including:
 - output directory selection,
 - source layer selection.
 <img src="assets/plugin_save_data.png" alt="GUI" width="50%">
+
+The YOLO-MOD plugin interface enables:
+- Preview saved detections using a raster image (.png) and the corresponding YOLO annotation file (.txt).
+<img src="assets/plugin_exp_preview.png" alt="GUI" width="50%">
+
+Merge detection results from multiple layers by selecting a source and target layer. The merged output is saved to the target layer.
+
+<img src="assets/plugin_merge_layers.png" alt="GUI" width="50%">
+
+Automatically split the current QGIS map extent into image tiles based on user-defined width, height, and output directory.
+
+<img src="assets/plugin_canvas tiling.png" alt="GUI" width="50%">
 
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
