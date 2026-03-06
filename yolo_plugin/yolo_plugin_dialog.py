@@ -48,8 +48,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_detect_cancel.clicked.connect(self.reject)
         self.btn_export_save.clicked.connect(self.accept)
         self.btn_export_cancel.clicked.connect(self.reject)
-        self.btn_merge_run.clicked.connect(self.accept)
-        self.btn_merge_cancel.clicked.connect(self.reject)
+
+        self.btn_merge_run.clicked.connect(lambda: self.done(10))
+        self.btn_delete_selected.clicked.connect(lambda: self.done(11))
+        self.btn_edit_close.clicked.connect(self.reject)
+
         self.btn_tiling_run.clicked.connect(self.accept)
         self.btn_tiling_cancel.clicked.connect(self.reject)
         self.btn_preview_run.clicked.connect(self.accept)
@@ -198,6 +201,10 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_merge_layers(self):
         return self.comboBox_merge_from.currentText(), self.comboBox_merge_to.currentText()
+
+    def set_selection_info(self, text, enabled=True):
+        self.label_selection_info.setText(text)
+        self.btn_delete_selected.setEnabled(enabled)
 
     def get_tiling_params(self):
         return {

@@ -321,75 +321,135 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="tab_merge">
+     <widget class="QWidget" name="tab_edit">
       <attribute name="title">
-        <string>Merge Layers</string>
+        <string>Edit Detections</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_merge">
+      <layout class="QVBoxLayout" name="verticalLayout_edit">
         <item>
-        <layout class="QGridLayout" name="gridLayout_merge">
-          <item row="0" column="0">
-          <widget class="QLabel" name="label_merge_from">
-            <property name="text">
-            <string>Source Layer:</string>
+          <widget class="QGroupBox" name="groupBox_merge">
+            <property name="title">
+              <string>Merge Layers</string>
             </property>
+            <layout class="QVBoxLayout" name="verticalLayout_merge_group">
+              <item>
+                <layout class="QGridLayout" name="gridLayout_merge">
+                  <item row="0" column="0">
+                    <widget class="QLabel" name="label_merge_from">
+                      <property name="text">
+                        <string>Source Layer:</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item row="0" column="1">
+                    <widget class="QComboBox" name="comboBox_merge_from"/>
+                  </item>
+                  <item row="1" column="0">
+                    <widget class="QLabel" name="label_merge_to">
+                      <property name="text">
+                        <string>Destination Layer:</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item row="1" column="1">
+                    <widget class="QComboBox" name="comboBox_merge_to"/>
+                  </item>
+                </layout>
+              </item>
+              <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_merge_btn">
+                  <item>
+                    <spacer name="horizontalSpacer_merge">
+                      <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                      </property>
+                    </spacer>
+                  </item>
+                  <item>
+                    <widget class="QPushButton" name="btn_merge_run">
+                      <property name="text">
+                        <string>Merge All Features</string>
+                      </property>
+                    </widget>
+                  </item>
+                </layout>
+              </item>
+            </layout>
           </widget>
-          </item>
-          <item row="0" column="1">
-          <widget class="QComboBox" name="comboBox_merge_from"/>
-          </item>
-          <item row="1" column="0">
-          <widget class="QLabel" name="label_merge_to">
-            <property name="text">
-            <string>Destination Layer:</string>
-            </property>
-          </widget>
-          </item>
-          <item row="1" column="1">
-          <widget class="QComboBox" name="comboBox_merge_to"/>
-          </item>
-        </layout>
         </item>
         <item>
-        <spacer name="verticalSpacer_merge">
-          <property name="orientation">
-          <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-          <size>
-            <width>20</width>
-            <height>40</height>
-          </size>
-          </property>
-        </spacer>
+          <widget class="QGroupBox" name="groupBox_selection_edit">
+            <property name="title">
+              <string>Selection Editing</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_selection_group">
+              <item>
+                <widget class="QLabel" name="label_selection_info">
+                  <property name="text">
+                    <string>No features selected on the map canvas.</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+              </item>
+              <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_selection_btns">
+                  <item>
+                    <spacer name="horizontalSpacer_delete">
+                      <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                      </property>
+                    </spacer>
+                  </item>
+                  <item>
+                    <widget class="QPushButton" name="btn_delete_selected">
+                      <property name="text">
+                        <string>Delete Selected Features</string>
+                      </property>
+                      <property name="toolTip">
+                        <string>Delete features currently selected in QGIS from their respective layer.</string>
+                      </property>
+                    </widget>
+                  </item>
+                </layout>
+              </item>
+            </layout>
+          </widget>
         </item>
         <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_merge_buttons">
-          <item>
-          <spacer name="horizontalSpacer_merge">
+          <spacer name="verticalSpacer_edit">
             <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+              <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+              <size>
+                <width>20</width>
+                <height>40</height>
+              </size>
             </property>
           </spacer>
-          </item>
-          <item>
-          <widget class="QPushButton" name="btn_merge_run">
-            <property name="text">
-            <string>Merge Layers</string>
-            </property>
-          </widget>
-          </item>
-          <item>
-          <widget class="QPushButton" name="btn_merge_cancel">
-            <property name="text">
-            <string>Cancel</string>
-            </property>
-          </widget>
-          </item>
-        </layout>
+        </item>
+        <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_edit_cancel">
+            <item>
+              <spacer name="horizontalSpacer_edit_cancel">
+                <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                </property>
+              </spacer>
+            </item>
+            <item>
+              <widget class="QPushButton" name="btn_edit_close">
+                <property name="text">
+                  <string>Close</string>
+                </property>
+              </widget>
+            </item>
+          </layout>
         </item>
       </layout>
-     </widget>
+    </widget>
      <widget class="QWidget" name="tab_export">
       <attribute name="title">
        <string>Export Results</string>

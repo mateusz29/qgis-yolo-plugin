@@ -250,6 +250,18 @@ class YOLOPlugin:
         self.dlg.comboBox_merge_to.clear()
         self.dlg.comboBox_merge_to.addItems(yolo_vector_layers)
 
+        active_layer = self.iface.activeLayer()
+        if active_layer and active_layer.type() == QgsMapLayer.VectorLayer:
+            selected_count = active_layer.selectedFeatureCount()
+            if selected_count > 0:
+                is_yolo = active_layer.name().startswith("YOLO Detections")
+                info_text = f"Selected {selected_count} feature(s) from layer: {active_layer.name()}"
+                self.dlg.set_selection_info(info_text, enabled=is_yolo)
+            else:
+                self.dlg.set_selection_info("No features selected in the active layer.", enabled=False)
+        else:
+            self.dlg.set_selection_info("No active vector layer selected in QGIS.", enabled=False)
+
         self.dlg.comboBox_export_layer.clear()
         self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
 
@@ -312,7 +324,10 @@ class YOLOPlugin:
 
                 self.detect_objects()
             elif current_tab == 1:
-                self.handle_merge()
+                if result == 10:
+                    self.handle_merge()
+                elif result == 11:
+                    self.handle_delete_selected()
             elif current_tab == 2:
                 self.handle_export()
             elif current_tab == 3:
@@ -455,6 +470,31 @@ class YOLOPlugin:
             else:
                 dest_layer.rollBack()
                 self._push_message("Error", "Failed to add features to destination layer.", level=2, duration=4)
+
+    def handle_delete_selected(self):
+        """Delete selected features from the currently active layer in QGIS."""
+        layer = self.iface.activeLayer()
+        if not layer or layer.type() != QgsMapLayer.VectorLayer:
+            self._push_message("Warning", "No active vector layer found.", level=1, duration=3)
+            return
+
+        if not layer.name().startswith("YOLO Detections"):
+            self._push_message("Warning", "Active layer is not a YOLO detection layer.", level=1, duration=3)
+            return
+
+        selected_ids = layer.selectedFeatureIds()
+        if not selected_ids:
+            self._push_message("Info", "No features selected in the active layer.", level=0, duration=2)
+            return
+
+        layer_name = layer.name()
+        if layer.startEditing():
+            if layer.deleteFeatures(selected_ids):
+                layer.commitChanges()
+                self._push_message("Success", f"Deleted {len(selected_ids)} features from {layer_name}.", level=0, duration=2)
+            else:
+                layer.rollBack()
+                self._push_message("Error", "Failed to delete features.", level=2, duration=4)
 
     def handle_tiling(self):
         """Split the current map canvas into multiple image tiles with letterboxing.
