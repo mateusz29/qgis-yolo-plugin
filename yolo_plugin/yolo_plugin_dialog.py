@@ -24,6 +24,7 @@
 """
 
 import os
+import random
 from functools import partial
 
 from qgis.core import QgsSettings
@@ -66,6 +67,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         )
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
+        self.toolButton_custom_model.clicked.connect(self.select_custom_model_path)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
         self.toolButton_tiling_dir.clicked.connect(self.select_tiling_dir)
         self.toolButton_preview_img.clicked.connect(self.select_preview_img)
@@ -80,10 +82,103 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             "warship": "cyan",
             "civilian ship": "magenta"
         }
-        self.color_buttons = {}
-        self.populate_color_pickers()
+        self.color_buttons_standard = {}
+        self.color_buttons_custom = {}
+        self.populate_standard_color_pickers()
         self.checkBox_fill.stateChanged.connect(self.update_transparency_enabled)
         self.update_transparency_enabled()
+        self.lineEdit_custom_model.textChanged.connect(self.on_custom_model_path_changed)
+
+    def on_custom_model_path_changed(self, path):
+        """Analyze the custom model to extract class names."""
+        if not path or not os.path.exists(path):
+            return
+        
+        if path.lower().endswith(".pt"):
+            try:
+                from ultralytics import YOLO
+                model = YOLO(path)
+                if hasattr(model, 'names') and model.names:
+                    class_names = list(model.names.values())
+                    self.populate_custom_color_pickers(class_names)
+            except Exception as e:
+                print(f"Failed to load custom model classes: {e}")
+
+    def populate_standard_color_pickers(self):
+        self._populate_pickers(self.display_class_names, self.verticalLayout_colors_standard, self.color_buttons_standard)
+
+    def populate_custom_color_pickers(self, class_names):
+        while self.verticalLayout_colors_custom.count() > 0:
+            item = self.verticalLayout_colors_custom.takeAt(0)
+            if item.layout():
+                while item.layout().count() > 0:
+                    sub_item = item.layout().takeAt(0)
+                    if sub_item.widget():
+                        sub_item.widget().deleteLater()
+                item.layout().deleteLater()
+            elif item.widget():
+                item.widget().deleteLater()
+        
+        self.color_buttons_custom = {}
+        self._populate_pickers(class_names, self.verticalLayout_colors_custom, self.color_buttons_custom)
+
+    def _populate_pickers(self, class_names, layout, storage):
+        """Generic helper to create color pickers."""
+        for class_name in class_names:
+            h_layout = QHBoxLayout()
+            label = QLabel(class_name)
+            outline_btn = QPushButton()
+            fill_btn = QPushButton()
+
+            if class_name in self.default_colors:
+                color = self.default_colors[class_name]
+            else:
+                color = QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)).name()
+                
+            outline_btn.setStyleSheet(f"background-color: {color}")
+            fill_btn.setStyleSheet(f"background-color: {color}")
+
+            outline_btn.clicked.connect(partial(self.select_color_dynamic, class_name, "outline", storage))
+            fill_btn.clicked.connect(partial(self.select_color_dynamic, class_name, "fill", storage))
+
+            h_layout.addWidget(label)
+            h_layout.addWidget(outline_btn)
+            h_layout.addWidget(fill_btn)
+
+            layout.addLayout(h_layout)
+            storage[class_name] = {"outline": outline_btn, "fill": fill_btn, "outline_hex": color, "fill_hex": color}
+
+    def select_color_dynamic(self, class_name, kind, storage):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            color_hex = color.name()
+            storage[class_name][kind].setStyleSheet(f"background-color: {color_hex}")
+            storage[class_name][f"{kind}_hex"] = color_hex
+
+    def get_active_model_info(self):
+        """Returns (is_custom, model_path, class_colors)"""
+        is_custom = self.tabWidget_models.currentIndex() == 1
+        if is_custom:
+            return True, self.lineEdit_custom_model.text(), self.get_class_colors_from(self.color_buttons_custom)
+        else:
+            return False, self.lineEdit_model1.text(), self.get_class_colors_from(self.color_buttons_standard)
+
+    def get_class_colors_from(self, storage):
+        colors = {}
+        for name, btn_data in storage.items():
+            default = QColor(self.default_colors.get(name, "gray")).name()
+            colors[name] = {
+                "outline": btn_data.get("outline_hex", default),
+                "fill": btn_data.get("fill_hex", default)
+            }
+        return colors
+
+    def get_class_colors(self):
+        _, _, colors = self.get_active_model_info()
+        return colors
+
+    def select_custom_model_path(self):
+        self._select_path(self.lineEdit_custom_model, "Select Custom YOLO Model", file_filter="*.pt")
 
     def _select_path(self, line_edit, title, is_dir=False, file_filter="", use_settings=True):
         """Generic helper for selecting a file or directory path."""
@@ -100,31 +195,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             if use_settings and not is_dir:
                 settings.setValue("YOLOPlugin/last_model_dir", os.path.dirname(path))
 
-    def populate_color_pickers(self):
-        """Create color picker buttons for each object class.
-
-        Each class gets outline and fill buttons that let the user choose
-        colors used when rendering detection polygons.
-        """
-        for class_name in self.display_class_names:
-            layout = QHBoxLayout()
-            label = QLabel(class_name)
-            outline_btn = QPushButton()
-            fill_btn = QPushButton()
-
-            outline_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
-            fill_btn.setStyleSheet(f"background-color: {self.default_colors[class_name]}")
-
-            outline_btn.clicked.connect(partial(self.select_color, class_name, "outline"))
-            fill_btn.clicked.connect(partial(self.select_color, class_name, "fill"))
-
-            layout.addWidget(label)
-            layout.addWidget(outline_btn)
-            layout.addWidget(fill_btn)
-
-            self.verticalLayout_colors.addLayout(layout)
-            self.color_buttons[class_name] = {"outline": outline_btn, "fill": fill_btn}
-
     def select_export_dir(self):
         """Open a directory chooser and set the export directory field."""
         self._select_path(self.lineEdit_export_dir, "Select Export Directory", is_dir=True, use_settings=False)
@@ -132,32 +202,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def select_tiling_dir(self):
         """Open a directory chooser and set the tiling export directory field."""
         self._select_path(self.lineEdit_tiling_dir, "Select Tiling Export Directory", is_dir=True, use_settings=False)
-
-    def select_color(self, class_name, kind):
-        """Show a QColorDialog and store the selected color for class rendering.
-
-        The chosen color is stored as a hex string in the internal `color_buttons` map.
-        """
-        color = QColorDialog.getColor()
-        if color.isValid():
-            color_hex = color.name()
-            self.color_buttons[class_name][kind].setStyleSheet(f"background-color: {color_hex}")
-            self.color_buttons[class_name][f"{kind}_hex"] = color_hex
-
-    def get_class_colors(self):
-        """Return a mapping of class names to color hex values for outline and fill.
-
-        Falls back to the configured defaults when the user did not choose a color.
-        """
-        colors = {}
-        for name in self.display_class_names:
-            default = QColor(self.default_colors.get(name, "black")).name()
-            btn_data = self.color_buttons[name]
-            colors[name] = {
-                "outline": btn_data.get("outline_hex", default),
-                "fill": btn_data.get("fill_hex", default)
-            }
-        return colors
 
     def get_save_option(self):
         return "new" if self.radio_new_layer.isChecked() else "append"

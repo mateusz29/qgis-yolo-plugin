@@ -308,19 +308,25 @@ class YOLOPlugin:
                 self.last_selected_layer_name = self.selectedLayer.name()
                 settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
 
-                self.class_colors = self.dlg.get_class_colors()
+                is_custom, model_path, colors = self.dlg.get_active_model_info()
+                self.class_colors = colors
                 self.conf_threshold = self.dlg.get_confidence_threshold()
                 self.is_new_mode = (self.dlg.get_save_option() == "new")
 
-                # Collect model paths (support running two models sequentially)
-                self.models_to_run = [self.dlg.lineEdit_model1.text()]
-                if self.dlg.get_run_multiple():
-                    second_model = self.dlg.get_second_model_path()
-                    if second_model == self.dlg.lineEdit_model1.text():
-                        self._push_message("Error", "Models are the same.", level=2, duration=4)
+                if is_custom:
+                    if not model_path:
+                        self._push_message("Error", "Please select a custom model path.", level=2, duration=4)
                         return
-                    if second_model:
-                        self.models_to_run.append(second_model)
+                    self.models_to_run = [model_path]
+                else:
+                    self.models_to_run = [self.dlg.lineEdit_model1.text()]
+                    if self.dlg.get_run_multiple():
+                        second_model = self.dlg.get_second_model_path()
+                        if second_model == self.dlg.lineEdit_model1.text():
+                            self._push_message("Error", "Models are the same.", level=2, duration=4)
+                            return
+                        if second_model:
+                            self.models_to_run.append(second_model)
 
                 self.detect_objects()
             elif current_tab == 1:
@@ -767,7 +773,7 @@ class YOLOPlugin:
                     y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
                     raw_name = r.names[int(r.boxes.cls[i].item())]
-                    class_name = self.object_names.get(raw_name)
+                    class_name = self.object_names.get(raw_name, raw_name)
                     detected_classes.add(class_name)
 
                     feat = QgsFeature()

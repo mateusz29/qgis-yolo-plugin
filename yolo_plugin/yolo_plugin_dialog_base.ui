@@ -25,10 +25,105 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_detection">
        <item>
-        <layout class="QGridLayout" name="gridLayout">
-         <property name="verticalSpacing">
-          <number>6</number>
-         </property>
+        <widget class="QTabWidget" name="tabWidget_models">
+         <widget class="QWidget" name="tab_standard_models">
+          <attribute name="title">
+           <string>Standard Models</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_standard">
+           <item>
+            <layout class="QGridLayout" name="gridLayout_standard">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_model1">
+               <property name="text">
+                <string>Select model (.pt, .onnx):</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_model1">
+               <item><widget class="QLineEdit" name="lineEdit_model1"/></item>
+               <item><widget class="QToolButton" name="toolButton_model1"><property name="text"><string>...</string></property></widget></item>
+              </layout>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_multiple_models">
+               <property name="text"><string>Multiple models:</string></property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QCheckBox" name="checkBox_run_multiple">
+               <property name="text"><string>Run multiple models</string></property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_model2">
+               <property name="text"><string>Select second model (.pt, .onnx):</string></property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_model2">
+               <item><widget class="QLineEdit" name="lineEdit_model2"><property name="enabled"><bool>false</bool></property></widget></item>
+               <item><widget class="QToolButton" name="toolButton_model2"><property name="enabled"><bool>false</bool></property><property name="text"><string>...</string></property></widget></item>
+              </layout>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <layout class="QVBoxLayout" name="verticalLayout_colors_standard">
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab_custom_model">
+          <attribute name="title">
+           <string>Custom Model</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_custom">
+           <item>
+            <layout class="QGridLayout" name="gridLayout_custom">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_custom_model">
+               <property name="text">
+                <string>Upload model (.pt):</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_custom_model">
+               <item><widget class="QLineEdit" name="lineEdit_custom_model"/></item>
+               <item><widget class="QToolButton" name="toolButton_custom_model"><property name="text"><string>...</string></property></widget></item>
+              </layout>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_custom_info">
+               <property name="text">
+                <string>Note: Custom model must be a YOLO (Ultralytics) model.
+Classes will be loaded dynamically from the .pt file.</string>
+               </property>
+               <property name="styleSheet">
+                <string>color: #d35400; font-weight: bold;</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0" colspan="2">
+              <widget class="QScrollArea" name="scrollArea_custom_colors">
+               <property name="widgetResizable"><bool>true</bool></property>
+               <widget class="QWidget" name="scrollAreaWidgetContents_custom">
+                <layout class="QVBoxLayout" name="verticalLayout_colors_custom">
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <layout class="QGridLayout" name="gridLayout_shared_bottom">
+         <property name="verticalSpacing"><number>6</number></property>
          <item row="0" column="0">
           <widget class="QLabel" name="label_layer">
            <property name="text">
@@ -40,243 +135,80 @@
           <widget class="QComboBox" name="comboBox"/>
          </item>
          <item row="1" column="0">
-          <widget class="QLabel" name="label_model1">
-           <property name="text">
-            <string>Select model (.pt, .onnx):</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_model1">
-           <item>
-            <widget class="QLineEdit" name="lineEdit_model1"/>
-           </item>
-           <item>
-            <widget class="QToolButton" name="toolButton_model1">
-             <property name="text">
-              <string>...</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="2" column="0">
-          <widget class="QLabel" name="label_multiple_models">
-           <property name="text">
-            <string>Multiple models:</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
-          <widget class="QCheckBox" name="checkBox_run_multiple">
-           <property name="text">
-            <string>Run multiple models</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="0">
-          <widget class="QLabel" name="label_model2">
-           <property name="text">
-            <string>Select second model (.pt, .onnx):</string>
-           </property>
-          </widget>
-         </item>
-         <item row="3" column="1">
-          <layout class="QHBoxLayout" name="horizontalLayout_model2">
-           <item>
-            <widget class="QLineEdit" name="lineEdit_model2">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QToolButton" name="toolButton_model2">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>...</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="4" column="0">
           <widget class="QLabel" name="label_target_option">
            <property name="text">
             <string>Save detections to:</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="1" column="1">
           <layout class="QVBoxLayout" name="verticalLayout_target">
            <item>
             <widget class="QRadioButton" name="radio_new_layer">
-             <property name="text">
-              <string>Create a new layer</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
+             <property name="text"><string>Create a new layer</string></property>
+             <property name="checked"><bool>true</bool></property>
             </widget>
            </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_append">
              <item>
               <widget class="QRadioButton" name="radio_append_layer">
-               <property name="text">
-                <string>Append to existing layer:</string>
-               </property>
+               <property name="text"><string>Append to existing layer:</string></property>
               </widget>
              </item>
              <item>
               <widget class="QComboBox" name="comboBox_target_layer">
-               <property name="enabled">
-                <bool>false</bool>
-               </property>
+               <property name="enabled"><bool>false</bool></property>
               </widget>
              </item>
             </layout>
            </item>
           </layout>
          </item>
-         <item row="5" column="0">
-          <widget class="QLabel" name="label_colors">
-           <property name="text">
-            <string>Set colors for classes:</string>
-           </property>
-           <property name="margin">
-            <number>4</number>
-           </property>
-          </widget>
-         </item>
-         <item row="5" column="1">
-          <layout class="QVBoxLayout" name="verticalLayout_colors">
-           <property name="spacing">
-            <number>4</number>
-           </property>
-           <item>
-            <layout class="QHBoxLayout" name="layout_label_headers">
-             <item>
-              <spacer name="spacer">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_outline_header">
-               <property name="text">
-                <string>Class name</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_outline_color_header">
-               <property name="text">
-                <string>Outline color</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_fill_header">
-               <property name="text">
-                <string>Fill color</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </item>
-         <item row="6" column="0">
+         <item row="2" column="0">
           <widget class="QLabel" name="label_confidence">
            <property name="text">
             <string>Confidence threshold (0–1):</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="1">
+         <item row="2" column="1">
           <widget class="QDoubleSpinBox" name="spinBox_confidence">
-           <property name="minimum">
-            <double>0.000000000000000</double>
-           </property>
-           <property name="maximum">
-            <double>1.000000000000000</double>
-           </property>
-           <property name="singleStep">
-            <double>0.050000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.500000000000000</double>
-           </property>
+           <property name="maximum"><double>1.0</double></property>
+           <property name="singleStep"><double>0.05</double></property>
+           <property name="value"><double>0.5</double></property>
           </widget>
          </item>
-         <item row="7" column="0">
+         <item row="3" column="0">
           <widget class="QLabel" name="label_fill">
-           <property name="text">
-            <string>Fill rectangles:</string>
-           </property>
+           <property name="text"><string>Fill rectangles:</string></property>
           </widget>
          </item>
-         <item row="7" column="1">
+         <item row="3" column="1">
           <widget class="QCheckBox" name="checkBox_fill">
-           <property name="text">
-            <string>Use filled rectangles</string>
-           </property>
+           <property name="text"><string>Use filled rectangles</string></property>
           </widget>
          </item>
-         <item row="8" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="label__fill_transparency">
-           <property name="text">
-            <string>Fill transparency (0-100%):</string>
-           </property>
+           <property name="text"><string>Fill transparency (0-100%):</string></property>
           </widget>
          </item>
-         <item row="8" column="1">
+         <item row="4" column="1">
           <widget class="QSpinBox" name="spinBox_fill_transparency">
-           <property name="suffix">
-            <string>%</string>
-           </property>
-           <property name="minimum">
-            <number>0</number>
-           </property>
-           <property name="maximum">
-            <number>100</number>
-           </property>
-           <property name="value">
-            <number>0</number>
-           </property>
+           <property name="suffix"><string>%</string></property>
+           <property name="maximum"><number>100</number></property>
           </widget>
          </item>
-         <item row="9" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="label_outline_transparency">
-           <property name="text">
-            <string>Outline transparency (0-100%):</string>
-           </property>
+           <property name="text"><string>Outline transparency (0-100%):</string></property>
           </widget>
          </item>
-         <item row="9" column="1">
+         <item row="5" column="1">
           <widget class="QSpinBox" name="spinBox_outline_transparency">
-           <property name="suffix">
-            <string>%</string>
-           </property>
-           <property name="minimum">
-            <number>0</number>
-           </property>
-           <property name="maximum">
-            <number>100</number>
-           </property>
-           <property name="value">
-            <number>0</number>
-           </property>
+           <property name="suffix"><string>%</string></property>
+           <property name="maximum"><number>100</number></property>
           </widget>
          </item>
         </layout>
