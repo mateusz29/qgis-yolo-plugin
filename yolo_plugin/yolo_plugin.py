@@ -78,6 +78,7 @@ class YOLOPlugin:
         self.menu = "&YOLO Plugin"
         self.model_cache = {}
         self.last_selected_layer_name = None
+        self.active_class_names = []
         self.object_names = {
             "airport": "airport",
             "helicopter": "helicopter",
@@ -318,8 +319,12 @@ class YOLOPlugin:
                         self._push_message("Error", "Please select a custom model path.", level=2, duration=4)
                         return
                     self.models_to_run = [model_path]
+                    model = self.get_model(model_path)
+                    if model and hasattr(model, 'names'):
+                        self.active_class_names = list(model.names.values())
                 else:
                     self.models_to_run = [self.dlg.lineEdit_model1.text()]
+                    self.active_class_names = ["airport", "helicopter", "aircraft", "storage tank", "warship", "civilian ship"]
                     if self.dlg.get_run_multiple():
                         second_model = self.dlg.get_second_model_path()
                         if second_model == self.dlg.lineEdit_model1.text():
@@ -400,7 +405,11 @@ class YOLOPlugin:
                 w = abs(norm_x_max - norm_x_min)
                 h = abs(norm_y_max - norm_y_min)
 
-                class_id = self.object_ids.get(feature["class"], 0)
+                class_name = feature["class"]
+                if class_name in self.active_class_names:
+                    class_id = self.active_class_names.index(class_name)
+                else:
+                    class_id = self.object_ids.get(class_name, 0)
 
                 yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
 
