@@ -98,6 +98,52 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.checkBox_fill.stateChanged.connect(self.update_transparency_enabled)
         self.update_transparency_enabled()
         self.lineEdit_custom_model.textChanged.connect(self.on_custom_model_path_changed)
+        self.checkBox_save_yolo.toggled.connect(
+            lambda checked: self.comboBox_export_layer.setEnabled(checked)
+        )
+
+    def setup_ui_state(self, layers, last_layer_name=None, canvas_size=None):
+        """Populates all layer-related combo boxes and sets initial UI state.
+
+        Args:
+            layers (list[QgsMapLayer]): List of all map layers.
+            last_layer_name (str, optional): Name of the last used layer.
+            canvas_size (QSize, optional): Current map canvas size.
+        """
+        layer_names = [layer.name() for layer in layers]
+
+        self.comboBox.clear()
+        self.comboBox.addItems(layer_names)
+        if last_layer_name in layer_names:
+            index = layer_names.index(last_layer_name)
+            self.comboBox.setCurrentIndex(index)
+
+        yolo_layer_names = [
+            layer.name() for layer in layers 
+            if layer.type() == 0 and layer.name().startswith("YOLO Detections")
+        ]
+
+        self.comboBox_merge_from.clear()
+        self.comboBox_merge_from.addItems(yolo_layer_names)
+        self.comboBox_merge_to.clear()
+        self.comboBox_merge_to.addItems(yolo_layer_names)
+
+        self.comboBox_export_layer.clear()
+        self.comboBox_export_layer.addItems(yolo_layer_names)
+
+        vector_layers = [layer.name() for layer in layers if layer.type() == 0]
+        self.comboBox_target_layer.clear()
+        self.comboBox_target_layer.addItems(vector_layers)
+
+        has_yolo = len(yolo_layer_names) > 0
+        self.radio_append_layer.setEnabled(has_yolo)
+        if not has_yolo:
+            self.radio_new_layer.setChecked(True)
+
+        self.comboBox_export_layer.setEnabled(self.checkBox_save_yolo.isChecked())
+
+        if canvas_size:
+            self.set_canvas_resolution_display(canvas_size.width(), canvas_size.height())
 
     def on_custom_model_path_changed(self, path):
         """Analyzes the custom model at the given path to extract available class names.
@@ -107,7 +153,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         """
         if not path or not os.path.exists(path):
             return
-        
+
         if path.lower().endswith(".pt"):
             try:
                 from ultralytics import YOLO

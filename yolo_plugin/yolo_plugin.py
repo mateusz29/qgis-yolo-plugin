@@ -253,24 +253,7 @@ class YOLOPlugin:
             self.first_start = False
             self.dlg = YOLOPluginDialog()
 
-        # Update layer list in main detection tab
-        layers = QgsProject.instance().mapLayers().values()
-        layer_names = [layer.name() for layer in layers]
-        self.dlg.comboBox.clear()
-        self.dlg.comboBox.addItems(layer_names)
-
-        # Update lists for merging and exporting
-        yolo_vector_layers = [
-            layer.name() for layer in layers 
-            if layer.type() == QgsMapLayer.VectorLayer and layer.name().startswith("YOLO Detections")
-        ]
-
-        self.dlg.comboBox_merge_from.clear()
-        self.dlg.comboBox_merge_from.addItems(yolo_vector_layers)
-        self.dlg.comboBox_merge_to.clear()
-        self.dlg.comboBox_merge_to.addItems(yolo_vector_layers)
-
-        # Check for selection in the active layer to provide feedback in the GUI
+        # Update labels and selection info based on active layer
         active_layer = self.iface.activeLayer()
         if active_layer and active_layer.type() == QgsMapLayer.VectorLayer:
             selected_count = active_layer.selectedFeatureCount()
@@ -283,93 +266,90 @@ class YOLOPlugin:
         else:
             self.dlg.set_selection_info("No active vector layer selected in QGIS.", enabled=False)
 
-        self.dlg.comboBox_export_layer.clear()
-        self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
-
-        has_existing = len(yolo_vector_layers) > 0
-        self.dlg.radio_append_layer.setEnabled(has_existing)
-
-        if not has_existing:
-            self.dlg.radio_new_layer.setChecked(True)
-
-        self.dlg.comboBox_target_layer.clear()
-        vector_layers = [lyr.name() for lyr in layers if lyr.type() == QgsMapLayer.VectorLayer]
-        self.dlg.comboBox_target_layer.addItems(vector_layers)
-
-        self.dlg.comboBox_export_layer.setEnabled(self.dlg.checkBox_save_yolo.isChecked())
-        try: 
-            self.dlg.checkBox_save_yolo.toggled.disconnect()
-        except TypeError:
-            pass
-        self.dlg.checkBox_save_yolo.toggled.connect(
-            lambda checked: self.dlg.comboBox_export_layer.setEnabled(checked)
-        )
-
-        # Restore last used layer from settings
         settings = QgsSettings()
-        saved_layer_name = settings.value("YOLOPlugin/last_layer", "")
-        if saved_layer_name in layer_names:
-            index = layer_names.index(saved_layer_name)
-            self.dlg.comboBox.setCurrentIndex(index)
-
+        layers = QgsProject.instance().mapLayers().values()
+        last_layer_name = settings.value("YOLOPlugin/last_layer", "")
         canvas_size = self.iface.mapCanvas().size()
-        self.dlg.set_canvas_resolution_display(canvas_size.width(), canvas_size.height())
+
+        self.dlg.setup_ui_state(layers, last_layer_name, canvas_size)
 
         self.dlg.show()
         result = self.dlg.exec_()
 
         if result:
-            current_tab = self.dlg.tabWidget.currentIndex()
-            if current_tab == 0:
-                selected_layer_name = self.dlg.comboBox.currentText()
-                self.selectedLayer = self._get_layer_by_name(selected_layer_name)
+            self._dispatch_tab_action(result)
 
-                if not self.selectedLayer:
+    def _dispatch_tab_action(self, result):
+        """Dispatches the appropriate method based on the active tab and button clicked.
+
+        Args:
+            result (int): The dialog's return code.
+        """
+        current_tab = self.dlg.tabWidget.currentIndex()
+
+        tab_actions = {
+            0: self.handle_detection_tab,
+            1: self.handle_edit_tab,
+            2: self.handle_export,
+            3: self.handle_preview,
+            4: self.handle_tiling
+        }
+
+        handler = tab_actions.get(current_tab)
+        if handler:
+            if current_tab == 1:
+                handler(result)
+            else:
+                handler()
+
+    def handle_detection_tab(self):
+        """Processes logic for the main detection tab."""
+        selected_layer_name = self.dlg.comboBox.currentText()
+        self.selectedLayer = self._get_layer_by_name(selected_layer_name)
+
+        if not self.selectedLayer:
+            return
+
+        settings = QgsSettings()
+        self.last_selected_layer_name = self.selectedLayer.name()
+        settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+
+        is_custom, model_path, colors = self.dlg.get_active_model_info()
+        self.class_colors = colors
+        self.conf_threshold = self.dlg.get_confidence_threshold()
+        self.is_new_mode = (self.dlg.get_save_option() == "new")
+
+        if is_custom:
+            if not model_path:
+                self._push_message("Error", "Please select a custom model path.", level=2, duration=4)
+                return
+            self.models_to_run = [model_path]
+            model = self.get_model(model_path)
+            if model and hasattr(model, 'names'):
+                self.active_class_names = list(model.names.values())
+        else:
+            self.models_to_run = [self.dlg.lineEdit_model1.text()]
+            self.active_class_names = ["airport", "helicopter", "aircraft", "storage tank", "warship", "civilian ship"]
+            if self.dlg.get_run_multiple():
+                second_model = self.dlg.get_second_model_path()
+                if second_model == self.dlg.lineEdit_model1.text():
+                    self._push_message("Error", "Models are the same.", level=2, duration=4)
                     return
+                if second_model:
+                    self.models_to_run.append(second_model)
 
-                # Cache the last used layer name for the next session
-                self.last_selected_layer_name = self.selectedLayer.name()
-                settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+        self.detect_objects()
 
-                # Fetch model configuration and color settings from the dialog
-                is_custom, model_path, colors = self.dlg.get_active_model_info()
-                self.class_colors = colors
-                self.conf_threshold = self.dlg.get_confidence_threshold()
-                self.is_new_mode = (self.dlg.get_save_option() == "new")
-
-                if is_custom:
-                    if not model_path:
-                        self._push_message("Error", "Please select a custom model path.", level=2, duration=4)
-                        return
-                    self.models_to_run = [model_path]
-                    model = self.get_model(model_path)
-                    if model and hasattr(model, 'names'):
-                        # Dynamically load class names from the custom model object
-                        self.active_class_names = list(model.names.values())
-                else:
-                    self.models_to_run = [self.dlg.lineEdit_model1.text()]
-                    self.active_class_names = ["airport", "helicopter", "aircraft", "storage tank", "warship", "civilian ship"]
-                    if self.dlg.get_run_multiple():
-                        # Handle simultaneous execution of two models
-                        second_model = self.dlg.get_second_model_path()
-                        if second_model == self.dlg.lineEdit_model1.text():
-                            self._push_message("Error", "Models are the same.", level=2, duration=4)
-                            return
-                        if second_model:
-                            self.models_to_run.append(second_model)
-
-                self.detect_objects()
-            elif current_tab == 1:
-                if result == 10:
-                    self.handle_merge()
-                elif result == 11:
-                    self.handle_delete_selected()
-            elif current_tab == 2:
-                self.handle_export()
-            elif current_tab == 3:
-                self.handle_preview()
-            elif current_tab == 4:
-                self.handle_tiling()
+    def handle_edit_tab(self, result):
+        """Processes logic for the edit (merge/delete) tab.
+        
+        Args:
+            result (int): The dialog's return code.
+        """
+        if result == 10:
+            self.handle_merge()
+        elif result == 11:
+            self.handle_delete_selected()
 
     def handle_export(self):
         """Exports the current map canvas image and/or YOLO detection labels.
