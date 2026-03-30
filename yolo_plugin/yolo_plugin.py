@@ -46,6 +46,8 @@ from qgis.PyQt.QtCore import QMetaType, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
 from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel, QDialogButtonBox
 from ultralytics import YOLO
+from onnxruntime import InferenceSession
+import cv2
 
 from .yolo_plugin_dialog import YOLOPluginDialog
 
@@ -225,19 +227,27 @@ class YOLOPlugin:
             self.iface.removeToolBarIcon(action)
 
     def get_model(self, model_path):
-        """Loads and caches a YOLO model from disk.
+        """Loads and caches a YOLO or ONNX model from disk.
 
         Args:
             model_path (str): The absolute path to the .pt or .onnx model file.
 
         Returns:
-            YOLO or None: The loaded YOLO model object, or None if the path is invalid.
+            YOLO or InferenceSession or None: The loaded model object, or None if the path is invalid.
         """
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
                 self._push_message("Error", f"Invalid model path: {model_path}", level=2, duration=4)
                 return None
-            self.model_cache[model_path] = YOLO(model_path)
+
+            if model_path.endswith(".pt"):
+                self.model_cache[model_path] = YOLO(model_path)
+            elif model_path.endswith(".onnx"):
+                self.model_cache[model_path] = InferenceSession(model_path, providers=["CPUExecutionProvider"])
+            else:
+                self._push_message("Error", "Unsupported model format. Use .pt or .onnx", level=2, duration=4)
+                return None
+
         return self.model_cache[model_path]
 
     def run(self):
@@ -765,13 +775,32 @@ class YOLOPlugin:
         settings.setLayers([layer])
         return self._render_to_image(settings, canvas.width(), canvas.height())
 
-    def detect_objects(self):
-        """Runs YOLO inference on the rendered image and creates polygon features.
+    def add_detection_feature(self, extent, width, height, box,class_name, features, detected_classes, format="xyxy"):
+        if format == "cxcywh":  # ONNX
+            cx, cy, w, h = box
+            x_min = (cx - w / 2) * width
+            y_min = (cy - h / 2) * height
+            x_max = (cx + w / 2) * width
+            y_max = (cy + h / 2) * height
+        else:  # YOLO
+            x_min, y_min, x_max, y_max = box
+        
+        x1 = extent.xMinimum() + (x_min / width) * extent.width()
+        y1 = extent.yMaximum() - (y_min / height) * extent.height()
+        x2 = extent.xMinimum() + (x_max / width) * extent.width()
+        y2 = extent.yMaximum() - (y_max / height) * extent.height()
+        detected_classes.add(class_name)
 
-        The rendered map image is converted to a NumPy array, passed to the 
-        YOLO model(s), and the resulting bboxes are transformed from pixels 
-        back to project geographical coordinates. Features are added to 
-        the target layer and styled based on UI selections.
+        feat = QgsFeature()
+        feat.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(x1,y1), QgsPointXY(x2,y1), QgsPointXY(x2,y2), QgsPointXY(x1,y2), QgsPointXY(x1,y1)]]))
+        feat.setAttributes([class_name])
+        features.append(feat)
+
+    def detect_objects(self):
+        """Runs inference on the rendered image and creates polygon features.
+
+        Supports standard YOLO (.pt/.onnx) and other ONNX models (DFINE, RFDETR).
+        Features are added to the target layer and styled based on UI selections.
         """
         img = self.render_layer_to_image(self.selectedLayer)
         width, height = img.width(), img.height()
@@ -780,41 +809,62 @@ class YOLOPlugin:
         img_array = np.array(ptr).reshape((height, width, 4))
         img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
 
-        all_results = {}
-        # Execute selected models
-        for m_path in self.models_to_run:
-            model = self.get_model(m_path)
-            if model:
-                all_results[m_path] = model.predict(img_rgb)
-
         extent = self.iface.mapCanvas().extent()
         features = []
         detected_classes = set()
 
-        # Parse inference results
-        for _, model_results in all_results.items():
-            for r in model_results:
-                for i, box in enumerate(r.boxes.xyxy):
-                    # Filter by confidence
-                    if float(r.boxes.conf[i].item()) < self.conf_threshold:
+        # Execute selected models
+        for m_path in self.models_to_run:
+            model = self.get_model(m_path)
+            if not model:
+                continue
+
+            # YOLO models (Ultralytics)
+            if isinstance(model, YOLO):
+                results = model.predict(img_rgb)
+                for r in results:
+                    for i, box in enumerate(r.boxes.xyxy):
+                        score = float(r.boxes.conf[i].item())
+                        if score < self.conf_threshold:
+                            continue
+
+                        raw_name = r.names[int(r.boxes.cls[i].item())]
+                        class_name = raw_name.lower()
+                        
+                        self.add_detection_feature(extent, width, height, box.tolist(), class_name, features, detected_classes, format="xyxy")
+
+            # ONNX models (DFINE, RFDETR)
+            elif isinstance(model, InferenceSession):
+                input_name = model.get_inputs()[0].name
+                input_shape = model.get_inputs()[0].shape
+                h_in, w_in = input_shape[2], input_shape[3]
+
+                # Resize and normalize image for model input
+                resized = cv2.resize(cv2.cvtColor(img_rgb, cv2.COLOR_BGR2RGB), (w_in, h_in))
+                tensor = np.expand_dims(np.transpose(resized.astype(np.float32) / 255.0, (2, 0, 1)), axis=0)
+
+                outputs = model.run(None, {input_name: tensor})
+                output_names = [o.name for o in model.get_outputs()]
+
+                if "logits" in output_names:
+                    logits, boxes = outputs[output_names.index("logits")], outputs[output_names.index("boxes")]
+                else:
+                    boxes, logits = outputs[output_names.index("dets")], outputs[output_names.index("labels")]
+
+                logits, boxes = np.squeeze(logits), np.squeeze(boxes)
+                scores = np.max(logits, axis=-1)
+                labels = np.argmax(logits, axis=-1)
+
+                for box, score, cls in zip(boxes, scores, labels):
+                    if score < self.conf_threshold:
                         continue
-                    
-                    # Map pixel coordinates to geographic extent
-                    x_min, y_min, x_max, y_max = box.tolist()
-                    x1 = extent.xMinimum() + (x_min / width) * extent.width()
-                    y1 = extent.yMaximum() - (y_min / height) * extent.height()
-                    x2 = extent.xMinimum() + (x_max / width) * extent.width()
-                    y2 = extent.yMaximum() - (y_max / height) * extent.height()
 
-                    raw_name = r.names[int(r.boxes.cls[i].item())]
-                    class_name = raw_name.lower()
-                    detected_classes.add(class_name)
+                    class_name = list(self.object_ids.keys())[int(cls)]
+                    self.add_detection_feature(extent, width, height, box.tolist(), class_name, features, detected_classes, format="cxcywh")
 
-                    # Create polygon geometry (rectangle)
-                    feat = QgsFeature()
-                    feat.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(x1,y1), QgsPointXY(x2,y1), QgsPointXY(x2,y2), QgsPointXY(x1,y2), QgsPointXY(x1,y1)]]))
-                    feat.setAttributes([class_name])
-                    features.append(feat)
+            else:
+                self._push_message("Error", "Unsupported model type.", level=2, duration=4)
+                return
 
         if not features:
             self._push_message("No objects detected", level=1, duration=2)
