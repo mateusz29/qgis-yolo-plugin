@@ -96,6 +96,17 @@ The plugin depends on the `ultralytics` Python library.
       # GPU version (recommended)
       pip install ultralytics onnx onnxruntime-gpu
    ```
+
+### Recommended dependency versions (tested)
+
+Due to potential conflicts with the QGIS Python environment (OSGeo4W), it is recommended to install compatible versions of the dependencies:
+
+```bash
+pip install ultralytics==8.3.0
+pip install onnx==1.16.1
+pip install onnxruntime-gpu==1.18.0
+pip install numpy==1.26.4
+ ```
 ## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:
 1. Select a layer - image from this layer will be processed.
