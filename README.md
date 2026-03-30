@@ -107,6 +107,8 @@ pip install onnx==1.16.1
 pip install onnxruntime-gpu==1.18.0
 pip install numpy==1.26.4  # optional; ensure compatibility with QGIS Python environment
  ```
+These versions were tested with QGIS 3.40.6 (Bratislava) and 3.42.2 (Münster) using the OSGeo4W distribution (Python 3.9).
+
 ## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:
 1. Select a layer - image from this layer will be processed.
