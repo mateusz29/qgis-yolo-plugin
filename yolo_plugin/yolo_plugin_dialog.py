@@ -24,6 +24,7 @@
 """
 
 import os
+import random
 from functools import partial
 
 from qgis.core import QgsSettings
@@ -44,25 +45,36 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         super(YOLOPluginDialog, self).__init__(parent)
         self.setupUi(self)
+
+        # Connect buttons for detection, export, and editing tabs
         self.btn_detect_ok.clicked.connect(self.accept)
         self.btn_detect_cancel.clicked.connect(self.reject)
         self.btn_export_save.clicked.connect(self.accept)
         self.btn_export_cancel.clicked.connect(self.reject)
-        self.btn_merge_run.clicked.connect(self.accept)
-        self.btn_merge_cancel.clicked.connect(self.reject)
+
+        # Custom return codes for merge and delete actions
+        self.btn_merge_run.clicked.connect(lambda: self.done(10))
+        self.btn_delete_selected.clicked.connect(lambda: self.done(11))
+        self.btn_edit_close.clicked.connect(self.reject)
+
         self.btn_tiling_run.clicked.connect(self.accept)
         self.btn_tiling_cancel.clicked.connect(self.reject)
         self.btn_preview_run.clicked.connect(self.accept)
         self.btn_preview_cancel.clicked.connect(self.reject)
+
+        # UI defaults
         self.spinBox_fill_transparency.setValue(50)
         self.lineEdit_model2.setEnabled(False)
         self.toolButton_model2.setEnabled(False)
         self.btn_tiling_run.setText("Preview && Start Tiling")
+
+        # Connect UI interactions
         self.checkBox_run_multiple.stateChanged.connect(
             lambda state: self.set_multiple_models_enabled(state == 2)
         )
         self.toolButton_model1.clicked.connect(self.select_model_path)
         self.toolButton_model2.clicked.connect(self.select_model_path2)
+        self.toolButton_custom_model.clicked.connect(self.select_custom_model_path)
         self.toolButton_export_dir.clicked.connect(self.select_export_dir)
         self.toolButton_tiling_dir.clicked.connect(self.select_tiling_dir)
         self.toolButton_preview_img.clicked.connect(self.select_preview_img)
@@ -77,13 +89,205 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             "vehicle": "cyan",
             "ship": "magenta"
         }
-        self.color_buttons = {}
-        self.populate_color_pickers()
+        self.color_buttons_standard = {}
+        self.color_buttons_custom = {}
+
+        self.populate_standard_color_pickers()
         self.checkBox_fill.stateChanged.connect(self.update_transparency_enabled)
         self.update_transparency_enabled()
+        self.lineEdit_custom_model.textChanged.connect(self.on_custom_model_path_changed)
+        self.checkBox_save_yolo.toggled.connect(
+            lambda checked: self.comboBox_export_layer.setEnabled(checked)
+        )
+
+    def setup_ui_state(self, layers, last_layer_name=None, canvas_size=None):
+        """Populates all layer-related combo boxes and sets initial UI state.
+
+        Args:
+            layers (list[QgsMapLayer]): List of all map layers.
+            last_layer_name (str, optional): Name of the last used layer.
+            canvas_size (QSize, optional): Current map canvas size.
+        """
+        layer_names = [layer.name() for layer in layers]
+
+        self.comboBox.clear()
+        self.comboBox.addItems(layer_names)
+        if last_layer_name in layer_names:
+            index = layer_names.index(last_layer_name)
+            self.comboBox.setCurrentIndex(index)
+
+        yolo_layer_names = [
+            layer.name() for layer in layers 
+            if layer.type() == 0 and layer.name().startswith("YOLO Detections")
+        ]
+
+        self.comboBox_merge_from.clear()
+        self.comboBox_merge_from.addItems(yolo_layer_names)
+        self.comboBox_merge_to.clear()
+        self.comboBox_merge_to.addItems(yolo_layer_names)
+
+        self.comboBox_export_layer.clear()
+        self.comboBox_export_layer.addItems(yolo_layer_names)
+
+        vector_layers = [layer.name() for layer in layers if layer.type() == 0]
+        self.comboBox_target_layer.clear()
+        self.comboBox_target_layer.addItems(vector_layers)
+
+        has_yolo = len(yolo_layer_names) > 0
+        self.radio_append_layer.setEnabled(has_yolo)
+        if not has_yolo:
+            self.radio_new_layer.setChecked(True)
+
+        self.comboBox_export_layer.setEnabled(self.checkBox_save_yolo.isChecked())
+
+        if canvas_size:
+            self.set_canvas_resolution_display(canvas_size.width(), canvas_size.height())
+
+    def on_custom_model_path_changed(self, path):
+        """Analyzes the custom model at the given path to extract available class names.
+
+        Args:
+            path (str): File path to the .pt YOLO model.
+        """
+        if not path or not os.path.exists(path):
+            return
+
+        if path.lower().endswith(".pt"):
+            try:
+                from ultralytics import YOLO
+                model = YOLO(path)
+                if hasattr(model, 'names') and model.names:
+                    class_names = list(model.names.values())
+                    self.populate_custom_color_pickers(class_names)
+            except Exception as e:
+                print(f"Failed to load custom model classes: {e}")
+
+    def populate_standard_color_pickers(self):
+        """Populates the standard color pickers list in the UI."""
+        self._populate_pickers(self.display_class_names, self.verticalLayout_colors_standard, self.color_buttons_standard)
+
+    def populate_custom_color_pickers(self, class_names):
+        """Populates the custom model color pickers list after clearing existing ones.
+
+        Args:
+            class_names (list[str]): List of class names from the custom model.
+        """
+        # Clear existing widgets in the custom colors layout
+        while self.verticalLayout_colors_custom.count() > 0:
+            item = self.verticalLayout_colors_custom.takeAt(0)
+            if item.layout():
+                while item.layout().count() > 0:
+                    sub_item = item.layout().takeAt(0)
+                    if sub_item.widget():
+                        sub_item.widget().deleteLater()
+                item.layout().deleteLater()
+            elif item.widget():
+                item.widget().deleteLater()
+        
+        self.color_buttons_custom = {}
+        self._populate_pickers(class_names, self.verticalLayout_colors_custom, self.color_buttons_custom)
+
+    def _populate_pickers(self, class_names, layout, storage):
+        """Internal helper to create color picker widgets dynamically.
+
+        Args:
+            class_names (list[str]): List of classes to create pickers for.
+            layout (QVBoxLayout): Layout to add the picker widgets to.
+            storage (dict): Dictionary to store references to the created buttons and color values.
+        """
+        for class_name in class_names:
+            h_layout = QHBoxLayout()
+            label = QLabel(class_name)
+            outline_btn = QPushButton()
+            fill_btn = QPushButton()
+
+            # Set default or random starting color
+            if class_name in self.default_colors:
+                color = self.default_colors[class_name]
+            else:
+                color = QColor(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)).name()
+                
+            outline_btn.setStyleSheet(f"background-color: {color}")
+            fill_btn.setStyleSheet(f"background-color: {color}")
+
+            # Connect behavior to open QColorDialog
+            outline_btn.clicked.connect(partial(self.select_color_dynamic, class_name, "outline", storage))
+            fill_btn.clicked.connect(partial(self.select_color_dynamic, class_name, "fill", storage))
+
+            h_layout.addWidget(label)
+            h_layout.addWidget(outline_btn)
+            h_layout.addWidget(fill_btn)
+
+            layout.addLayout(h_layout)
+            storage[class_name] = {"outline": outline_btn, "fill": fill_btn, "outline_hex": color, "fill_hex": color}
+
+    def select_color_dynamic(self, class_name, kind, storage):
+        """Opens a color dialog and updates the corresponding UI button.
+
+        Args:
+            class_name (str): Name of the class being edited.
+            kind (str): Either "outline" or "fill".
+            storage (dict): The storage dictionary where hex colors are saved.
+        """
+        color = QColorDialog.getColor()
+        if color.isValid():
+            color_hex = color.name()
+            storage[class_name][kind].setStyleSheet(f"background-color: {color_hex}")
+            storage[class_name][f"{kind}_hex"] = color_hex
+
+    def get_active_model_info(self):
+        """Retrieves information about the currently selected model tab.
+
+        Returns:
+            tuple: (is_custom (bool), model_path (str), class_colors (dict))
+        """
+        is_custom = self.tabWidget_models.currentIndex() == 1
+        if is_custom:
+            return True, self.lineEdit_custom_model.text(), self.get_class_colors_from(self.color_buttons_custom)
+        else:
+            return False, self.lineEdit_model1.text(), self.get_class_colors_from(self.color_buttons_standard)
+
+    def get_class_colors_from(self, storage):
+        """Converts internal button storage into a structured hex color dictionary.
+
+        Args:
+            storage (dict): Dictionary containing picker button metadata.
+
+        Returns:
+            dict: Mapping of class names to their "outline" and "fill" hex codes.
+        """
+        colors = {}
+        for name, btn_data in storage.items():
+            default = QColor(self.default_colors.get(name, "gray")).name()
+            colors[name] = {
+                "outline": btn_data.get("outline_hex", default),
+                "fill": btn_data.get("fill_hex", default)
+            }
+        return colors
+
+    def get_class_colors(self):
+        """Helper to get the appropriate class color mapping for the active model.
+
+        Returns:
+            dict: Class color mapping.
+        """
+        _, _, colors = self.get_active_model_info()
+        return colors
+
+    def select_custom_model_path(self):
+        """Opens a file dialog specifically for custom YOLO .pt models."""
+        self._select_path(self.lineEdit_custom_model, "Select Custom YOLO Model", file_filter="*.pt")
 
     def _select_path(self, line_edit, title, is_dir=False, file_filter="", use_settings=True):
-        """Generic helper for selecting a file or directory path."""
+        """Generic internal helper for selecting a file or directory path.
+
+        Args:
+            line_edit (QLineEdit): The text box to populate with the path.
+            title (str): Title for the dialog window.
+            is_dir (bool, optional): Whether to pick a directory instead of a file. Defaults to False.
+            file_filter (str, optional): Filters for file extensions. Defaults to "".
+            use_settings (bool, optional): Whether to remember and restore the last folder. Defaults to True.
+        """
         settings = QgsSettings()
         last_dir = settings.value("YOLOPlugin/last_model_dir", os.path.expanduser("~")) if use_settings else ""
         
@@ -123,11 +327,11 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             self.color_buttons[class_name] = {"outline": outline_btn, "fill": fill_btn}
 
     def select_export_dir(self):
-        """Open a directory chooser and set the export directory field."""
+        """Opens a directory chooser for the main export directory."""
         self._select_path(self.lineEdit_export_dir, "Select Export Directory", is_dir=True, use_settings=False)
 
     def select_tiling_dir(self):
-        """Open a directory chooser and set the tiling export directory field."""
+        """Opens a directory chooser for the tiling results directory."""
         self._select_path(self.lineEdit_tiling_dir, "Select Tiling Export Directory", is_dir=True, use_settings=False)
 
     def select_color(self, class_name, kind):
@@ -157,49 +361,114 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         return colors
 
     def get_save_option(self):
+        """Returns whether the user wants to create a new layer or append to existing one.
+
+        Returns:
+            str: "new" or "append".
+        """
         return "new" if self.radio_new_layer.isChecked() else "append"
 
     def get_target_layer_name(self):
+        """Returns the name of the currently selected target layer for appending.
+
+        Returns:
+            str: The layer name.
+        """
         return self.comboBox_target_layer.currentText()
 
     def get_confidence_threshold(self):
+        """Returns the user-selected confidence threshold for detection.
+
+        Returns:
+            float: Value between 0.0 and 1.0.
+        """
         return self.spinBox_confidence.value()
 
     def get_fill_enabled(self):
+        """Checks if boundary box filling is enabled.
+
+        Returns:
+            bool: True if polygons should be filled.
+        """
         return self.checkBox_fill.isChecked()
 
     def get_fill_transparency(self):
+        """Returns the polygon fill transparency percentage.
+
+        Returns:
+            int: 0 to 100.
+        """
         return self.spinBox_fill_transparency.value()
 
     def get_outline_transparency(self):
+        """Returns the polygon outline transparency percentage.
+
+        Returns:
+            int: 0 to 100.
+        """
         return self.spinBox_outline_transparency.value()
 
     def update_transparency_enabled(self):
+        """Disables the fill transparency spinner if fill is not checked."""
         self.spinBox_fill_transparency.setEnabled(self.checkBox_fill.isChecked())
 
     def select_model_path(self):
-        """Open a file dialog to select the primary YOLO model file and remember its folder."""
+        """Opens a file dialog to select the primary YOLO model file."""
         self._select_path(self.lineEdit_model1, "Select YOLO Model", file_filter="*.pt *.onnx")
 
     def select_model_path2(self):
-        """Open a file dialog to select the secondary YOLO model file (optional)."""
+        """Opens a file dialog to select the secondary YOLO model file."""
         self._select_path(self.lineEdit_model2, "Select YOLO Model", file_filter="*.pt *.onnx")
 
     def set_multiple_models_enabled(self, enabled):
-        """Enable or disable the secondary model UI controls based on checkbox state."""
+        """Enables or disables UI fields for selecting multiple models.
+
+        Args:
+            enabled (bool): Whether to enable the fields.
+        """
         self.lineEdit_model2.setEnabled(enabled)
         self.toolButton_model2.setEnabled(enabled)
 
     def get_second_model_path(self):
+        """Returns the path of the secondary selected model.
+
+        Returns:
+            str: File path.
+        """
         return self.lineEdit_model2.text()
 
     def get_run_multiple(self):
+        """Checks if the user requested to run two models simultaneously.
+
+        Returns:
+            bool: True if multiple models should be run.
+        """
         return self.checkBox_run_multiple.isChecked()
 
     def get_merge_layers(self):
+        """Retrieves the source and destination layers selected for merging.
+
+        Returns:
+            tuple: (from_layer_name (str), to_layer_name (str))
+        """
         return self.comboBox_merge_from.currentText(), self.comboBox_merge_to.currentText()
 
+    def set_selection_info(self, text, enabled=True):
+        """Updates the feedback label in the edit tab regarding selected features.
+
+        Args:
+            text (str): Message to display.
+            enabled (bool, optional): Whether to enable the 'Delete' button. Defaults to True.
+        """
+        self.label_selection_info.setText(text)
+        self.btn_delete_selected.setEnabled(enabled)
+
     def get_tiling_params(self):
+        """Retrieves tiling configuration from the UI.
+
+        Returns:
+            dict: Dictionary with keys "width", "height", and "dir".
+        """
         return {
             "width": self.spinBox_tile_width.value(),
             "height": self.spinBox_tile_height.value(),
@@ -207,13 +476,26 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         }
 
     def set_canvas_resolution_display(self, width, height):
+        """Updates the UI label showing the current map canvas resolution.
+
+        Args:
+            width (int): Canvas width.
+            height (int): Canvas height.
+        """
         self.label_canvas_res_value.setText(f"{width} x {height} px")
 
     def select_preview_img(self):
+        """Opens a file chooser to select an image for previewing YOLO boxes."""
         self._select_path(self.lineEdit_preview_img, "Select Image", file_filter="Images (*.png *.jpg)", use_settings=False)
 
     def select_preview_txt(self):
+        """Opens a file chooser to select a .txt YOLO label file for preview."""
         self._select_path(self.lineEdit_preview_txt, "Select YOLO Labels", file_filter="Text Files (*.txt)", use_settings=False)
 
     def get_preview_paths(self):
+        """Returns the selected paths for the image/label preview feature.
+
+        Returns:
+            tuple: (image_path (str), labels_path (str))
+        """
         return self.lineEdit_preview_img.text(), self.lineEdit_preview_txt.text()

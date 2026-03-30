@@ -78,6 +78,14 @@ class YOLOPlugin:
         self.menu = "&YOLO Plugin"
         self.model_cache = {}
         self.last_selected_layer_name = None
+        self.object_names = {
+            "airport": "airport",
+            "helicopter": "helicopter",
+            "plane": "aircraft",
+            "oiltank": "storage tank",
+            "warship": "warship",
+            "ship": "civilian ship"
+        }
         self.object_ids = {
             "plane": 0,
             "bridge": 1,
@@ -88,16 +96,38 @@ class YOLOPlugin:
         }
 
     def _get_layer_by_name(self, name):
-        """Helper to find a map layer by its name."""
+        """Helper to find a map layer by its name.
+
+        Args:
+            name (str): The name of the map layer to find.
+
+        Returns:
+            QgsMapLayer or None: The first matching map layer object, or None if not found.
+        """
         layers = QgsProject.instance().mapLayersByName(name)
         return layers[0] if layers else None
 
     def _push_message(self, title, message, level=0, duration=2):
-        """Helper to push messages to the QGIS message bar."""
+        """Helper to push messages to the QGIS message bar.
+
+        Args:
+            title (str): The title of the message.
+            message (str): The body content of the message.
+            level (int, optional): Message level (0: info, 1: warning, 2: critical). Defaults to 0.
+            duration (int, optional): Duration to show the message in seconds. Defaults to 2.
+        """
         self.iface.messageBar().pushMessage(title, message, level=level, duration=duration)
 
     def _get_filtered_layers(self, exclude_layer_name=None):
-        """Helper to get map layers while excluding YOLO detection layers."""
+        """Helper to get map layers while excluding YOLO detection layers.
+
+        Args:
+            exclude_layer_name (str, optional): A specific layer name to exclude from the list. 
+                Defaults to None.
+
+        Returns:
+            list[QgsMapLayer]: A list of map layers matching the filter criteria.
+        """
         clean_layers = []
         for layer in self.iface.mapCanvas().mapSettings().layers():
             if exclude_layer_name and layer.name() == exclude_layer_name:
@@ -108,7 +138,18 @@ class YOLOPlugin:
         return clean_layers
 
     def _render_to_image(self, settings, width, height, transparent=True):
-        """Helper to render map settings to a QImage."""
+        """Helper to render map settings to a QImage.
+
+        Args:
+            settings (QgsMapSettings): Map settings to use for rendering.
+            width (int): Target image width in pixels.
+            height (int): Target image height in pixels.
+            transparent (bool, optional): Whether to use a transparent background. 
+                Defaults to True.
+
+        Returns:
+            QImage: The rendered map image.
+        """
         image = QImage(QSize(width, height), QImage.Format_ARGB32_Premultiplied)
         image.fill(QColor(0, 0, 0, 0) if transparent else QColor(0, 0, 0))
         painter = QPainter(image)
@@ -130,43 +171,21 @@ class YOLOPlugin:
         whats_this=None,
         parent=None,
     ):
-        """Add a toolbar icon to the toolbar.
+        """Adds an action to the QGIS UI (toolbar and/or menu).
 
-        :param icon_path: Path to the icon for this action. Can be a resource
-            path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
-        :type icon_path: str
+        Args:
+            icon_path (str): Path to the icon file.
+            text (str): Display text for the action.
+            callback (function): Function to call when the action is triggered.
+            enabled_flag (bool, optional): Initial enabled state. Defaults to True.
+            add_to_menu (bool, optional): Whether to add to the plugin menu. Defaults to True.
+            add_to_toolbar (bool, optional): Whether to add to the toolbar. Defaults to True.
+            status_tip (str, optional): Tooltip text for the status bar. Defaults to None.
+            whats_this (str, optional): "What's this" help text. Defaults to None.
+            parent (QWidget, optional): Parent widget for the action. Defaults to None.
 
-        :param text: Text that should be shown in menu items for this action.
-        :type text: str
-
-        :param callback: Function to be called when the action is triggered.
-        :type callback: function
-
-        :param enabled_flag: A flag indicating if the action should be enabled
-            by default. Defaults to True.
-        :type enabled_flag: bool
-
-        :param add_to_menu: Flag indicating whether the action should also
-            be added to the menu. Defaults to True.
-        :type add_to_menu: bool
-
-        :param add_to_toolbar: Flag indicating whether the action should also
-            be added to the toolbar. Defaults to True.
-        :type add_to_toolbar: bool
-
-        :param status_tip: Optional text to show in a popup when mouse pointer
-            hovers over the action.
-        :type status_tip: str
-
-        :param parent: Parent widget for the new action. Defaults None.
-        :type parent: QWidget
-
-        :param whats_this: Optional text to show in the status bar when the
-            mouse pointer hovers over the action.
-
-        :returns: The action that was created. Note that the action is also
-            added to self.actions list.
-        :rtype: QAction
+        Returns:
+            QAction: The created action object.
         """
 
         icon = QIcon(icon_path)
@@ -189,6 +208,7 @@ class YOLOPlugin:
         return action
 
     def initGui(self):
+        """Initializes the plugin's graphical user interface components."""
         icon_path = f"{self.plugin_dir}/icon.png"
         self.add_action(
             icon_path,
@@ -199,16 +219,19 @@ class YOLOPlugin:
         self.first_start = True
 
     def unload(self):
-        """Remove plugin actions from QGIS UI when unloading the plugin."""
+        """Removes plugin actions from QGIS UI when unloading the plugin."""
         for action in self.actions:
             self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
 
     def get_model(self, model_path):
-        """Load and cache a YOLO model from disk.
+        """Loads and caches a YOLO model from disk.
 
-        If the path is invalid, display an error message and return None.
-        Caching avoids reloading the same model multiple times.
+        Args:
+            model_path (str): The absolute path to the .pt or .onnx model file.
+
+        Returns:
+            YOLO or None: The loaded YOLO model object, or None if the path is invalid.
         """
         if model_path not in self.model_cache:
             if not os.path.exists(model_path):
@@ -218,7 +241,7 @@ class YOLOPlugin:
         return self.model_cache[model_path]
 
     def run(self):
-        """Show the plugin dialog and dispatch actions based on user input.
+        """Shows the plugin dialog and dispatches actions based on user input.
 
         Prepares layer lists, restores last-used settings, and either
         runs detection or performs export depending on the selected tab.
@@ -227,96 +250,109 @@ class YOLOPlugin:
             self.first_start = False
             self.dlg = YOLOPluginDialog()
 
-        layers = QgsProject.instance().mapLayers().values()
-        layer_names = [layer.name() for layer in layers]
-        self.dlg.comboBox.clear()
-        self.dlg.comboBox.addItems(layer_names)
-
-        yolo_vector_layers = [
-            layer.name() for layer in layers 
-            if layer.type() == QgsMapLayer.VectorLayer and layer.name().startswith("YOLO Detections")
-        ]
-
-        self.dlg.comboBox_merge_from.clear()
-        self.dlg.comboBox_merge_from.addItems(yolo_vector_layers)
-        self.dlg.comboBox_merge_to.clear()
-        self.dlg.comboBox_merge_to.addItems(yolo_vector_layers)
-
-        self.dlg.comboBox_export_layer.clear()
-        self.dlg.comboBox_export_layer.addItems(yolo_vector_layers)
-
-        has_existing = len(yolo_vector_layers) > 0
-        self.dlg.radio_append_layer.setEnabled(has_existing)
-
-        if not has_existing:
-            self.dlg.radio_new_layer.setChecked(True)
-
-        self.dlg.comboBox_target_layer.clear()
-        vector_layers = [lyr.name() for lyr in layers if lyr.type() == QgsMapLayer.VectorLayer]
-        self.dlg.comboBox_target_layer.addItems(vector_layers)
-
-        self.dlg.comboBox_export_layer.setEnabled(self.dlg.checkBox_save_yolo.isChecked())
-        try: 
-            self.dlg.checkBox_save_yolo.toggled.disconnect()
-        except TypeError:
-            pass
-        self.dlg.checkBox_save_yolo.toggled.connect(
-            lambda checked: self.dlg.comboBox_export_layer.setEnabled(checked)
-        )
+        # Update labels and selection info based on active layer
+        active_layer = self.iface.activeLayer()
+        if active_layer and active_layer.type() == QgsMapLayer.VectorLayer:
+            selected_count = active_layer.selectedFeatureCount()
+            if selected_count > 0:
+                is_yolo = active_layer.name().startswith("YOLO Detections")
+                info_text = f"Selected {selected_count} feature(s) from layer: {active_layer.name()}"
+                self.dlg.set_selection_info(info_text, enabled=is_yolo)
+            else:
+                self.dlg.set_selection_info("No features selected in the active layer.", enabled=False)
+        else:
+            self.dlg.set_selection_info("No active vector layer selected in QGIS.", enabled=False)
 
         settings = QgsSettings()
-        saved_layer_name = settings.value("YOLOPlugin/last_layer", "")
-        if saved_layer_name in layer_names:
-            index = layer_names.index(saved_layer_name)
-            self.dlg.comboBox.setCurrentIndex(index)
-
+        layers = QgsProject.instance().mapLayers().values()
+        last_layer_name = settings.value("YOLOPlugin/last_layer", "")
         canvas_size = self.iface.mapCanvas().size()
-        self.dlg.set_canvas_resolution_display(canvas_size.width(), canvas_size.height())
+
+        self.dlg.setup_ui_state(layers, last_layer_name, canvas_size)
 
         self.dlg.show()
         result = self.dlg.exec_()
 
         if result:
-            current_tab = self.dlg.tabWidget.currentIndex()
-            if current_tab == 0:
-                selected_layer_name = self.dlg.comboBox.currentText()
-                self.selectedLayer = self._get_layer_by_name(selected_layer_name)
+            self._dispatch_tab_action(result)
 
-                if not self.selectedLayer:
+    def _dispatch_tab_action(self, result):
+        """Dispatches the appropriate method based on the active tab and button clicked.
+
+        Args:
+            result (int): The dialog's return code.
+        """
+        current_tab = self.dlg.tabWidget.currentIndex()
+
+        tab_actions = {
+            0: self.handle_detection_tab,
+            1: self.handle_edit_tab,
+            2: self.handle_export,
+            3: self.handle_preview,
+            4: self.handle_tiling
+        }
+
+        handler = tab_actions.get(current_tab)
+        if handler:
+            if current_tab == 1:
+                handler(result)
+            else:
+                handler()
+
+    def handle_detection_tab(self):
+        """Processes logic for the main detection tab."""
+        selected_layer_name = self.dlg.comboBox.currentText()
+        self.selectedLayer = self._get_layer_by_name(selected_layer_name)
+
+        if not self.selectedLayer:
+            return
+
+        settings = QgsSettings()
+        self.last_selected_layer_name = self.selectedLayer.name()
+        settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+
+        is_custom, model_path, colors = self.dlg.get_active_model_info()
+        self.class_colors = colors
+        self.conf_threshold = self.dlg.get_confidence_threshold()
+        self.is_new_mode = (self.dlg.get_save_option() == "new")
+
+        if is_custom:
+            if not model_path:
+                self._push_message("Error", "Please select a custom model path.", level=2, duration=4)
+                return
+            self.models_to_run = [model_path]
+            model = self.get_model(model_path)
+            if model and hasattr(model, 'names'):
+                self.active_class_names = list(model.names.values())
+        else:
+            self.models_to_run = [self.dlg.lineEdit_model1.text()]
+            self.active_class_names = ["airport", "helicopter", "aircraft", "storage tank", "warship", "civilian ship"]
+            if self.dlg.get_run_multiple():
+                second_model = self.dlg.get_second_model_path()
+                if second_model == self.dlg.lineEdit_model1.text():
+                    self._push_message("Error", "Models are the same.", level=2, duration=4)
                     return
+                if second_model:
+                    self.models_to_run.append(second_model)
 
-                self.last_selected_layer_name = self.selectedLayer.name()
-                settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+        self.detect_objects()
 
-                self.class_colors = self.dlg.get_class_colors()
-                self.conf_threshold = self.dlg.get_confidence_threshold()
-                self.is_new_mode = (self.dlg.get_save_option() == "new")
-
-                # Collect model paths (support running two models sequentially)
-                self.models_to_run = [self.dlg.lineEdit_model1.text()]
-                if self.dlg.get_run_multiple():
-                    second_model = self.dlg.get_second_model_path()
-                    if second_model == self.dlg.lineEdit_model1.text():
-                        self._push_message("Error", "Models are the same.", level=2, duration=4)
-                        return
-                    if second_model:
-                        self.models_to_run.append(second_model)
-
-                self.detect_objects()
-            elif current_tab == 1:
-                self.handle_merge()
-            elif current_tab == 2:
-                self.handle_export()
-            elif current_tab == 3:
-                self.handle_preview()
-            elif current_tab == 4:
-                self.handle_tiling()
+    def handle_edit_tab(self, result):
+        """Processes logic for the edit (merge/delete) tab.
+        
+        Args:
+            result (int): The dialog's return code.
+        """
+        if result == 10:
+            self.handle_merge()
+        elif result == 11:
+            self.handle_delete_selected()
 
     def handle_export(self):
-        """Export current map canvas image and/or YOLO detection labels.
+        """Exports the current map canvas image and/or YOLO detection labels.
 
         Validates the export directory, optionally saves a PNG of the canvas,
-        and writes YOLO-format label files from a chosen detection layer.
+        and writes YOLO-format label files (.txt) from a chosen detection layer.
         """
         export_dir = self.dlg.lineEdit_export_dir.text()
         if not export_dir or not os.path.isdir(export_dir):
@@ -329,6 +365,7 @@ class YOLOPlugin:
         canvas = self.iface.mapCanvas()
         extent = canvas.extent()
 
+        # Save map canvas to PNG
         if self.dlg.checkBox_save_canvas.isChecked():
             img_path = os.path.join(export_dir, f"{base_filename}.png")
             settings = canvas.mapSettings()
@@ -362,6 +399,7 @@ class YOLOPlugin:
                 if not extent.contains(bbox):
                     continue
 
+                # Normalization logic
                 norm_x_min = (bbox.xMinimum() - extent.xMinimum()) / extent.width()
                 norm_x_max = (bbox.xMaximum() - extent.xMinimum()) / extent.width()
                 norm_y_min = (extent.yMaximum() - bbox.yMaximum()) / extent.height()
@@ -371,7 +409,11 @@ class YOLOPlugin:
                 w = abs(norm_x_max - norm_x_min)
                 h = abs(norm_y_max - norm_y_min)
 
-                class_id = self.object_ids.get(feature["class"], 0)
+                class_name = feature["class"]
+                if class_name in self.active_class_names:
+                    class_id = self.active_class_names.index(class_name)
+                else:
+                    class_id = self.object_ids.get(class_name, 0)
 
                 yolo_lines.append(f"{class_id} {x_center:.6f} {y_center:.6f} {w:.6f} {h:.6f}")
 
@@ -381,7 +423,12 @@ class YOLOPlugin:
             self._push_message("Export", f"YOLO labels saved: {base_filename}.txt", level=0, duration=2)
 
     def handle_merge(self):
-        """Copies all features from the source layer to the destination layer."""
+        """Copies all features from the source layer to the destination layer.
+
+        Detects missing fields in the destination layer and adds them before
+        transferring geometries and attributes. Copies symbology categories 
+        from source to target if both use categorized renderers.
+        """
         from_name, to_name = self.dlg.get_merge_layers()
         
         if from_name == to_name:
@@ -394,7 +441,7 @@ class YOLOPlugin:
         if not source_layer or not dest_layer:
             return
 
-        # Add fields from source that don't exist in destination
+        # Synchronize attribute fields
         src_fields = source_layer.fields()
         dst_fields = dest_layer.fields()
         missing_fields = [f for f in src_fields if dst_fields.indexFromName(f.name()) == -1]
@@ -404,7 +451,7 @@ class YOLOPlugin:
             dest_layer.updateFields()
             dst_fields = dest_layer.fields()
 
-        # Copy features
+        # Build feature list for batch insertion
         new_features = []
         for feat in source_layer.getFeatures():
             new_feat = QgsFeature(dst_fields)
@@ -421,6 +468,7 @@ class YOLOPlugin:
             success = dest_layer.addFeatures(new_features)
             if success:
                 dest_layer.commitChanges()
+                # Update symbology categories
                 src_renderer = source_layer.renderer()
                 dst_renderer = dest_layer.renderer()
 
@@ -448,13 +496,40 @@ class YOLOPlugin:
                 dest_layer.rollBack()
                 self._push_message("Error", "Failed to add features to destination layer.", level=2, duration=4)
 
+    def handle_delete_selected(self):
+        """Deletes selected features from the currently active layer in QGIS.
+
+        Restricted to layers starting with 'YOLO Detections' for safety.
+        """
+        layer = self.iface.activeLayer()
+        if not layer or layer.type() != QgsMapLayer.VectorLayer:
+            self._push_message("Warning", "No active vector layer found.", level=1, duration=3)
+            return
+
+        if not layer.name().startswith("YOLO Detections"):
+            self._push_message("Warning", "Active layer is not a YOLO detection layer.", level=1, duration=3)
+            return
+
+        selected_ids = layer.selectedFeatureIds()
+        if not selected_ids:
+            self._push_message("Info", "No features selected in the active layer.", level=0, duration=2)
+            return
+
+        layer_name = layer.name()
+        if layer.startEditing():
+            if layer.deleteFeatures(selected_ids):
+                layer.commitChanges()
+                self._push_message("Success", f"Deleted {len(selected_ids)} features from {layer_name}.", level=0, duration=2)
+            else:
+                layer.rollBack()
+                self._push_message("Error", "Failed to delete features.", level=2, duration=4)
+
     def handle_tiling(self):
-        """Split the current map canvas into multiple image tiles with letterboxing.
+        """Splits the current map canvas into multiple image tiles with letterboxing.
 
         Calculates a grid based on user-defined pixel dimensions. For tiles at 
         the edges that do not fit the full dimensions, the available map area 
-        is rendered and padded with a black background (letterboxed) to 
-        maintain consistent tile sizes.
+        is rendered and padded with a black background (letterboxed).
         """
         p = self.dlg.get_tiling_params()
         if not p["dir"] or not os.path.isdir(p["dir"]):
@@ -468,6 +543,7 @@ class YOLOPlugin:
         cols = (canvas_size.width() + t_w - 1) // t_w
         rows = (canvas_size.height() + t_h - 1) // t_h
 
+        # Render preview image with grid lines
         preview_size = QSize(cols * t_w, rows * t_h)
         settings = QgsMapSettings(canvas.mapSettings())
         settings.setLayers(self._get_filtered_layers())
@@ -501,6 +577,7 @@ class YOLOPlugin:
         if preview.exec_() != QDialog.Accepted:
             return
 
+        # Perform actual tiling
         settings = QgsMapSettings(canvas.mapSettings())
         settings.setLayers(self._get_filtered_layers())
 
@@ -510,11 +587,6 @@ class YOLOPlugin:
         px_w_geo = full_extent.width() / canvas_size.width()
         px_h_geo = full_extent.height() / canvas_size.height()
 
-        t_w = p["width"]
-        t_h = p["height"]
-
-        cols = (canvas_size.width() + t_w - 1) // t_w
-        rows = (canvas_size.height() + t_h - 1) // t_h
         total_tiles = cols * rows
 
         if total_tiles == 0:
@@ -541,6 +613,7 @@ class YOLOPlugin:
 
                 map_img = self._render_to_image(settings, actual_w, actual_h)
 
+                # Pad to uniform tile size
                 final_tile = QImage(QSize(t_w, t_h), QImage.Format_ARGB32_Premultiplied)
                 final_tile.fill(QColor(0, 0, 0))
 
@@ -556,7 +629,11 @@ class YOLOPlugin:
         self._push_message("Success", f"Generated {count} tiles.", level=0, duration=2)
 
     def handle_preview(self):
-        """Read a YOLO txt file and an image, draw boxes, and show a popup."""
+        """Reads a YOLO txt file and an image, draws bounding boxes, and shows a popup.
+
+        Args:
+            None (Retrieves paths from the UI dialog).
+        """
         img_path, txt_path = self.dlg.get_preview_paths()
         if not os.path.exists(img_path) or not os.path.exists(txt_path):
             self._push_message("Error", "Files not found", level=2, duration=4)
@@ -603,9 +680,12 @@ class YOLOPlugin:
         self.preview_window.show()
 
     def save_layer(self, layer):
-        """Persist a memory layer to a shapefile in the project directory.
+        """Persists a memory layer to a shapefile in the project directory.
 
         If the project has not been saved, prompt the user to save first.
+
+        Args:
+            layer (QgsVectorLayer): The memory layer to be saved as a permanent file.
         """
         project_path = QgsProject.instance().fileName()
         if not project_path:
@@ -629,11 +709,10 @@ class YOLOPlugin:
             QgsProject.instance().removeMapLayer(layer.id())
 
     def get_or_create_layer(self):
-        """Return an existing target layer or create a new YOLO Detections memory layer.
+        """Returns an existing target layer or creates a new YOLO Detections memory layer.
 
-        If the user chose 'append', the existing layer is returned (and
-        a missing 'class' attribute is added). If 'new' is chosen a
-        uniquely numbered memory layer is created and added to the project.
+        Returns:
+            QgsVectorLayer: The layer where detections will be added.
         """
         save_option = self.dlg.get_save_option()
         if save_option == "new":
@@ -670,9 +749,13 @@ class YOLOPlugin:
         return layer
 
     def render_layer_to_image(self, layer):
-        """Render a vector layer to an off-screen image using current canvas settings.
+        """Renders a vector layer to an off-screen image using current canvas settings.
 
-        Returns a QImage with the rendered layer contents sized to the map canvas.
+        Args:
+            layer (QgsMapLayer): The layer to be rendered.
+
+        Returns:
+            QImage: The rendered image shaped to the current canvas dimensions.
         """
         canvas = self.iface.mapCanvas()
         settings = QgsMapSettings()
@@ -683,11 +766,12 @@ class YOLOPlugin:
         return self._render_to_image(settings, canvas.width(), canvas.height())
 
     def detect_objects(self):
-        """Run YOLO inference on the rendered image and create polygon features.
+        """Runs YOLO inference on the rendered image and creates polygon features.
 
-        The rendered image is converted to a NumPy array, fed to the model(s),
-        and detection boxes are converted back to project coordinates. Results
-        are added to the target vector layer and styled according to dialog settings.
+        The rendered map image is converted to a NumPy array, passed to the 
+        YOLO model(s), and the resulting bboxes are transformed from pixels 
+        back to project geographical coordinates. Features are added to 
+        the target layer and styled based on UI selections.
         """
         img = self.render_layer_to_image(self.selectedLayer)
         width, height = img.width(), img.height()
@@ -697,6 +781,7 @@ class YOLOPlugin:
         img_rgb = img_array[..., :3][..., ::-1]  # RGBA to BGR
 
         all_results = {}
+        # Execute selected models
         for m_path in self.models_to_run:
             model = self.get_model(m_path)
             if model:
@@ -706,12 +791,15 @@ class YOLOPlugin:
         features = []
         detected_classes = set()
 
+        # Parse inference results
         for _, model_results in all_results.items():
             for r in model_results:
                 for i, box in enumerate(r.boxes.xyxy):
+                    # Filter by confidence
                     if float(r.boxes.conf[i].item()) < self.conf_threshold:
                         continue
                     
+                    # Map pixel coordinates to geographic extent
                     x_min, y_min, x_max, y_max = box.tolist()
                     x1 = extent.xMinimum() + (x_min / width) * extent.width()
                     y1 = extent.yMaximum() - (y_min / height) * extent.height()
@@ -722,6 +810,7 @@ class YOLOPlugin:
                     class_name = raw_name.lower()
                     detected_classes.add(class_name)
 
+                    # Create polygon geometry (rectangle)
                     feat = QgsFeature()
                     feat.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(x1,y1), QgsPointXY(x2,y1), QgsPointXY(x2,y2), QgsPointXY(x1,y2), QgsPointXY(x1,y1)]]))
                     feat.setAttributes([class_name])
@@ -731,10 +820,12 @@ class YOLOPlugin:
             self._push_message("No objects detected", level=1, duration=2)
             return
 
+        # Commit features to layer
         layer = self.get_or_create_layer()
         layer.dataProvider().addFeatures(features)
         layer.updateExtents()
 
+        # Apply symbology from UI colors
         fill_alpha = int(255 * (1 - self.dlg.get_fill_transparency() / 100))
         outline_alpha = int(255 * (1 - self.dlg.get_outline_transparency() / 100))
         categories = []
@@ -755,6 +846,7 @@ class YOLOPlugin:
             })
             categories.append(QgsRendererCategory(name, sym, name))
 
+        # Preserve existing categories if appending
         if categories:
             if not self.is_new_mode:
                 old_renderer = layer.renderer()
