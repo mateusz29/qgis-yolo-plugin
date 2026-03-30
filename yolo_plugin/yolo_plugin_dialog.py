@@ -80,7 +80,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
         self.toolButton_preview_img.clicked.connect(self.select_preview_img)
         self.toolButton_preview_txt.clicked.connect(self.select_preview_txt)
         self.radio_append_layer.toggled.connect(self.comboBox_target_layer.setEnabled)
-        #self.display_class_names = ["plane", "bridge", "airport", "harbor", "vehicle", "ship"]
+        self.display_class_names = ["plane", "bridge", "airport", "harbor", "vehicle", "ship"]
         self.default_colors = {
             "plane": "blue",
             "bridge": "orange",
@@ -344,21 +344,6 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
             color_hex = color.name()
             self.color_buttons[class_name][kind].setStyleSheet(f"background-color: {color_hex}")
             self.color_buttons[class_name][f"{kind}_hex"] = color_hex
-
-    def get_class_colors(self):
-        """Return a mapping of class names to color hex values for outline and fill.
-
-        Falls back to the configured defaults when the user did not choose a color.
-        """
-        colors = {}
-        for name, default_color in self.default_colors.items():
-            default_hex = QColor(default_color).name()
-            btn_data = self.color_buttons[name]
-            colors[name] = {
-                "outline": btn_data.get("outline_hex", default_hex),
-                "fill": btn_data.get("fill_hex", default_hex)
-            }
-        return colors
 
     def get_save_option(self):
         """Returns whether the user wants to create a new layer or append to existing one.
