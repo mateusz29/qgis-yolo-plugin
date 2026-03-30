@@ -99,13 +99,13 @@ The plugin depends on the `ultralytics` Python library.
 
 ### Recommended dependency versions (tested)
 
-Due to potential conflicts with the QGIS Python environment (OSGeo4W), it is recommended to install compatible versions of the dependencies:
+Due to potential compatibility issues with the QGIS embedded Python environment (OSGeo4W), it is recommended to install the following tested versions of the dependencies:
 
 ```bash
 pip install ultralytics==8.3.0
 pip install onnx==1.16.1
 pip install onnxruntime-gpu==1.18.0
-pip install numpy==1.26.4
+pip install numpy==1.26.4  # optional; ensure compatibility with QGIS Python environment
  ```
 ## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:
