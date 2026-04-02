@@ -4,7 +4,7 @@ import numpy as np
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsRectangle
 from qgis.PyQt.QtGui import QImage
 from unittest.mock import MagicMock, patch
-from yolo_plugin.yolo_plugin import YOLOPlugin
+from yolo_mod.yolo_mod import YOLOMod
 
 @pytest.fixture
 def real_data_plugin(qgis_app):
@@ -15,7 +15,7 @@ def real_data_plugin(qgis_app):
     iface.mapCanvas().width.return_value = 640
     iface.mapCanvas().height.return_value = 480
     
-    return YOLOPlugin(iface)
+    return YOLOMod(iface)
 
 def test_detect_objects_with_real_model(real_data_plugin):
     """

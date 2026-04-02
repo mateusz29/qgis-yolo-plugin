@@ -3,7 +3,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 from qgis.core import QgsProject, QgsVectorLayer, QgsPointXY
 from qgis.PyQt.QtGui import QImage
-from yolo_plugin.yolo_plugin import YOLOPlugin
+from yolo_mod.yolo_mod import YOLOMod
 
 @pytest.fixture
 def plugin(qgis_app):
@@ -26,7 +26,7 @@ def plugin(qgis_app):
     
     canvas.extent.return_value = mock_extent
     
-    return YOLOPlugin(iface)
+    return YOLOMod(iface)
 
 def test_init_gui(plugin):
     """Verify that actions are added to the QGIS interface."""
@@ -35,7 +35,7 @@ def test_init_gui(plugin):
     plugin.iface.addToolBarIcon.assert_called()
     plugin.iface.addPluginToMenu.assert_called()
 
-@patch('yolo_plugin.yolo_plugin.YOLO')
+@patch('yolo_mod.yolo_mod.YOLO')
 def test_get_model_caching(mock_yolo, plugin):
     """Verify that YOLO models are cached and not reloaded."""
     model_path = "fake/path/model.pt"
@@ -59,8 +59,8 @@ def test_get_or_create_layer_new(plugin):
     assert layer.fields().at(0).name() == "class"
     assert layer in QgsProject.instance().mapLayers().values()
 
-@patch('yolo_plugin.yolo_plugin.YOLO')
-@patch('yolo_plugin.yolo_plugin.YOLOPluginDialog')
+@patch('yolo_mod.yolo_mod.YOLO')
+@patch('yolo_mod.yolo_mod.YOLOModDialog')
 def test_detect_objects_logic(mock_dialog, mock_yolo, plugin):
     QgsProject.instance().removeAllMapLayers()
     fake_path = "C:/fake/model.pt"

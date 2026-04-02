@@ -71,6 +71,17 @@ These images show grids of sample images from test sets with bounding boxes and 
 ### QGIS Environment
 The plugin was developed and tested on Windows 11 using QGIS installed via **OSGeo4W (versions 3.40.6-Bratislava and 3.42.2-Münster)**. Other installation methods and operating systems are not supported.
 
+## Hardware Requirements
+
+GPU acceleration is strongly recommended for practical use.
+
+- **Recommended:** NVIDIA GPU with CUDA support (CUDA 11.x or 12.x, depending on PyTorch/ONNX Runtime build)
+- **CPU-only mode:** supported, but significantly slower and not suitable for large images or real-world workflows
+
+The plugin supports both PyTorch and ONNX Runtime inference backends:
+- PyTorch requires CUDA-enabled installation for GPU acceleration
+- ONNX Runtime can run in CPU or GPU mode depending on the installed package (onnxruntime / onnxruntime-gpu)
+
 ### Python Dependency
 The plugin depends on the `ultralytics` Python library.
 
@@ -79,8 +90,24 @@ The plugin depends on the `ultralytics` Python library.
 1. Open **OSGeo4W Shell** matching your QGIS installation.
 2. Run:
    ```bash
-   pip install ultralytics onnx onnxruntime-gpu
+      # CPU version
+      pip install ultralytics onnx onnxruntime
+
+      # GPU version (recommended)
+      pip install ultralytics onnx onnxruntime-gpu
    ```
+
+### Recommended dependency versions (tested)
+
+Due to potential compatibility issues with the QGIS embedded Python environment (OSGeo4W), it is recommended to install the following tested versions of the dependencies:
+
+```bash
+pip install ultralytics==8.3.0
+pip install onnx==1.16.1
+pip install onnxruntime-gpu==1.18.0
+pip install numpy==1.26.4  # optional; ensure compatibility with QGIS Python environment
+ ```
+These versions were tested with QGIS 3.40.6 (Bratislava) and 3.42.2 (Münster) using the OSGeo4W distribution (Python 3.11).
 
 ## YOLO-MOD Plugin GUI
 The plugin is configured to let the user define the input parameters:

@@ -49,7 +49,7 @@ from ultralytics import YOLO
 from onnxruntime import InferenceSession
 import cv2
 
-from .yolo_plugin_dialog import YOLOPluginDialog
+from .yolo_mod_dialog import YOLOModDialog
 
 
 class PreviewPopup(QDialog):
@@ -64,7 +64,7 @@ class PreviewPopup(QDialog):
         self.setLayout(layout)
 
 
-class YOLOPlugin:
+class YOLOMod:
     """Main plugin class integrating YOLO detection into QGIS.
 
     This class manages the plugin lifecycle, GUI actions, model loading,
@@ -77,7 +77,7 @@ class YOLOPlugin:
         self.plugin_dir = os.path.dirname(__file__)
         self.first_start = None
         self.actions = []
-        self.menu = "&YOLO Plugin"
+        self.menu = "&YOLO-MOD"
         self.model_cache = {}
         self.last_selected_layer_name = None
         self.object_names = {
@@ -258,7 +258,7 @@ class YOLOPlugin:
         """
         if self.first_start:
             self.first_start = False
-            self.dlg = YOLOPluginDialog()
+            self.dlg = YOLOModDialog()
 
         # Update labels and selection info based on active layer
         active_layer = self.iface.activeLayer()
@@ -275,7 +275,7 @@ class YOLOPlugin:
 
         settings = QgsSettings()
         layers = QgsProject.instance().mapLayers().values()
-        last_layer_name = settings.value("YOLOPlugin/last_layer", "")
+        last_layer_name = settings.value("YOLOMod/last_layer", "")
         canvas_size = self.iface.mapCanvas().size()
 
         self.dlg.setup_ui_state(layers, last_layer_name, canvas_size)
@@ -319,7 +319,7 @@ class YOLOPlugin:
 
         settings = QgsSettings()
         self.last_selected_layer_name = self.selectedLayer.name()
-        settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+        settings.setValue("YOLOMod/last_layer", self.last_selected_layer_name)
 
         is_custom, model_path, colors = self.dlg.get_active_model_info()
         self.class_colors = colors

@@ -3,7 +3,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=YOLO Plugin
+name=YOLO-MOD
 qgisMinimumVersion=3.0
 description= Detection and classification of objects in optical remote sensing imagery using YOLO models, including ships, aircraft, helicopters, airports, and storage tanks.
 version=2.0
@@ -12,8 +12,8 @@ email=marcin.ciecholewski@pg.edu.pl
 
 about= This plugin applies a trained YOLO model to detect and classify objects in optical imagery, including aircraft, airports, ships, helicopters, and storage tanks. Results are generated as scalable vector layers with associated labels and confidence scores. Icon: Miscellaneous icons created by afif fudin - https://www.flaticon.com/free-icons/miscellaneous (via Flaticon)
 
-tracker=https://github.com/mateusz29/qgis-yolo-plugin/issues
-repository=https://github.com/mateusz29/qgis-yolo-plugin
+tracker=https://github.com/mateusz29/yolo-mod/issues
+repository=https://github.com/mateusz29/yolo-mod
 # End of mandatory metadata
 
 # Recommended items:
@@ -25,7 +25,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python
 
-homepage=https://github.com/mateusz29/qgis-yolo-plugin
+homepage=https://github.com/mateusz29/yolo-mod
 category=Plugins
 icon=icon.png
 # experimental flag

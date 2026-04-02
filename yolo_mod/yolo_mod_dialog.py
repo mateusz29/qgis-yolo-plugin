@@ -32,10 +32,10 @@ from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QColorDialog, QHBoxLayout, QLabel, QPushButton, QFileDialog
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_plugin_dialog_base.ui"))
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "yolo_mod_dialog_base.ui"))
 
 
-class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
+class YOLOModDialog(QtWidgets.QDialog, FORM_CLASS):
     """Dialog UI for YOLO plugin settings and export options.
 
     This class wraps the generated UI form and provides helper methods to
@@ -43,7 +43,7 @@ class YOLOPluginDialog(QtWidgets.QDialog, FORM_CLASS):
     the main plugin class.
     """
     def __init__(self, parent=None):
-        super(YOLOPluginDialog, self).__init__(parent)
+        super(YOLOModDialog, self).__init__(parent)
         self.setupUi(self)
 
         # Connect buttons for detection, export, and editing tabs
