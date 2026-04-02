@@ -457,6 +457,7 @@ class YOLOModDialog(QtWidgets.QDialog, FORM_CLASS):
         return {
             "width": self.spinBox_tile_width.value(),
             "height": self.spinBox_tile_height.value(),
+            "overlap": self.spinBox_tile_overlap.value(),
             "dir": self.lineEdit_tiling_dir.text()
         }
 

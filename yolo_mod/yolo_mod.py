@@ -42,7 +42,7 @@ from qgis.core import (
     QgsMapLayer,
     QgsRectangle
 )
-from qgis.PyQt.QtCore import QMetaType, QSize, Qt
+from qgis.PyQt.QtCore import QMetaType, QSize, Qt, QRect
 from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
 from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel, QDialogButtonBox
 from ultralytics import YOLO
@@ -60,6 +60,7 @@ class PreviewPopup(QDialog):
         layout = QVBoxLayout(self)
         label = QLabel()
         label.setPixmap(pixmap)
+        label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
         self.setLayout(layout)
 
@@ -549,30 +550,52 @@ class YOLOMod:
         canvas = self.iface.mapCanvas()
         canvas_size = canvas.size()
         t_w, t_h = p["width"], p["height"]
+        overlap = p.get("overlap", 0) / 100.0
 
-        cols = (canvas_size.width() + t_w - 1) // t_w
-        rows = (canvas_size.height() + t_h - 1) // t_h
+        step_w = max(1, int(t_w * (1 - overlap)))
+        step_h = max(1, int(t_h * (1 - overlap)))
 
-        # Render preview image with grid lines
-        preview_size = QSize(cols * t_w, rows * t_h)
+        import math
+        cols = max(1, math.ceil((canvas_size.width() - t_w) / step_w) + 1) if canvas_size.width() > t_w else 1
+        rows = max(1, math.ceil((canvas_size.height() - t_h) / step_h) + 1) if canvas_size.height() > t_h else 1
+
+        # Render one large image of the map extent matching the tiling span
+        preview_size = QSize((cols - 1) * step_w + t_w, (rows - 1) * step_h + t_h)
         settings = QgsMapSettings(canvas.mapSettings())
         settings.setLayers(self._get_filtered_layers())
-        preview_img = self._render_to_image(settings, preview_size.width(), preview_size.height(), transparent=False)
+        base_img = self._render_to_image(settings, preview_size.width(), preview_size.height(), transparent=False)
 
-        painter = QPainter(preview_img)
-        pen = QPen(QColor(255, 255, 0))
-        pen.setWidth(2)
-        painter.setPen(pen)
+        # Create a grid image to show tiles separated by a gap
+        gap = max(2, int(min(t_w, t_h) * 0.02))
+        grid_w = cols * t_w + (cols - 1) * gap
+        grid_h = rows * t_h + (rows - 1) * gap
+        grid_img = QImage(QSize(grid_w, grid_h), QImage.Format_ARGB32_Premultiplied)
+        grid_img.fill(QColor(255, 100, 255))
 
+        painter = QPainter(grid_img)
         for r in range(rows):
             for c in range(cols):
-                px_x = c * t_w
-                px_y = r * t_h
-                painter.drawRect(px_x, px_y, t_w, t_h)
+                px_x = c * step_w
+                px_y = r * step_h
 
+                # The actual region extracted from the map
+                actual_w = min(t_w, preview_size.width() - px_x)
+                actual_h = min(t_h, preview_size.height() - px_y)
+                tile_rect = QRect(px_x, px_y, actual_w, actual_h)
+                tile_sub_img = base_img.copy(tile_rect)
+
+                # Where to draw this tile on the grid
+                dest_x = c * (t_w + gap)
+                dest_y = r * (t_h + gap)
+
+                # Draw black background padding for the tile
+                painter.fillRect(dest_x, dest_y, t_w, t_h, QColor(0, 0, 0))
+                # Draw the actual map piece on top
+                painter.drawImage(dest_x, dest_y, tile_sub_img)
+                
         painter.end()
 
-        pixmap = QPixmap.fromImage(preview_img)
+        pixmap = QPixmap.fromImage(grid_img)
         if pixmap.width() > 800 or pixmap.height() > 600:
             pixmap = pixmap.scaled(800, 600, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
@@ -606,11 +629,11 @@ class YOLOMod:
         count = 0
         for r in range(rows):
             for c in range(cols):
-                px_x = c * t_w
-                px_y = r * t_h
+                px_x = c * step_w
+                px_y = r * step_h
 
-                actual_w = min(t_w, canvas_size.width() - px_x)
-                actual_h = min(t_h, canvas_size.height() - px_y)
+                actual_w = min(t_w, preview_size.width() - px_x)
+                actual_h = min(t_h, preview_size.height() - px_y)
 
                 x_min = full_extent.xMinimum() + (px_x * px_w_geo)
                 y_max = full_extent.yMaximum() - (px_y * px_h_geo)
@@ -686,7 +709,7 @@ class YOLOMod:
 
         painter.end()
 
-        self.preview_window = PreviewPopup(QPixmap.fromImage(img), self.iface.mainWindow())
+        self.preview_window = PreviewPopup(QPixmap.fromImage(img), parent=self.iface.mainWindow())
         self.preview_window.show()
 
     def save_layer(self, layer):
