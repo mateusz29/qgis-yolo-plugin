@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>YOLOPluginDialogBase</class>
- <widget class="QDialog" name="YOLOPluginDialogBase">
+ <class>YOLOModDialogBase</class>
+ <widget class="QDialog" name="YOLOModDialogBase">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>YOLO Plugin</string>
+   <string>YOLO-MOD</string>
   </property>
   <layout class="QVBoxLayout" name="mainVerticalLayout">
    <item>

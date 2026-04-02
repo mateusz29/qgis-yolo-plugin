@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/yolo_plugin" >
+    <qresource prefix="/plugins/yolo_mod" >
         <file>icon.png</file>
     </qresource>
 </RCC>

@@ -47,7 +47,7 @@ from qgis.PyQt.QtGui import QColor, QIcon, QImage, QPainter, QPixmap, QPen
 from qgis.PyQt.QtWidgets import QAction, QDialog, QVBoxLayout, QLabel
 from ultralytics import YOLO
 
-from .yolo_plugin_dialog import YOLOPluginDialog
+from .yolo_mod_dialog import YOLOModDialog
 
 
 class PreviewPopup(QDialog):
@@ -62,7 +62,7 @@ class PreviewPopup(QDialog):
         self.setLayout(layout)
 
 
-class YOLOPlugin:
+class YOLOMod:
     """Main plugin class integrating YOLO detection into QGIS.
 
     This class manages the plugin lifecycle, GUI actions, model loading,
@@ -75,7 +75,7 @@ class YOLOPlugin:
         self.plugin_dir = os.path.dirname(__file__)
         self.first_start = None
         self.actions = []
-        self.menu = "&YOLO Plugin"
+        self.menu = "&YOLO-MOD"
         self.model_cache = {}
         self.last_selected_layer_name = None
         self.object_names = {
@@ -202,7 +202,7 @@ class YOLOPlugin:
         """
         if self.first_start:
             self.first_start = False
-            self.dlg = YOLOPluginDialog()
+            self.dlg = YOLOModDialog()
 
         layers = QgsProject.instance().mapLayers().values()
         layer_names = [layer.name() for layer in layers]
@@ -242,7 +242,7 @@ class YOLOPlugin:
         )
 
         settings = QgsSettings()
-        saved_layer_name = settings.value("YOLOPlugin/last_layer", "")
+        saved_layer_name = settings.value("YOLOMod/last_layer", "")
         if saved_layer_name in layer_names:
             index = layer_names.index(saved_layer_name)
             self.dlg.comboBox.setCurrentIndex(index)
@@ -263,7 +263,7 @@ class YOLOPlugin:
                     return
 
                 self.last_selected_layer_name = self.selectedLayer.name()
-                settings.setValue("YOLOPlugin/last_layer", self.last_selected_layer_name)
+                settings.setValue("YOLOMod/last_layer", self.last_selected_layer_name)
 
                 self.class_colors = self.dlg.get_class_colors()
                 self.conf_threshold = self.dlg.get_confidence_threshold()

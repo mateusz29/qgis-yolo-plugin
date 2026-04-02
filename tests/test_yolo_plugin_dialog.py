@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import patch
 from qgis.PyQt.QtCore import Qt
-from  yolo_plugin.yolo_plugin_dialog import YOLOPluginDialog
+from  yolo_mod.yolo_mod_dialog import YOLOModDialog
 
 @pytest.fixture
 def dialog(qtbot):
     """Fixture to initialize the dialog for each test."""
-    test_dialog = YOLOPluginDialog()
+    test_dialog = YOLOModDialog()
     test_dialog.show() # Necessary for some UI events to trigger
     qtbot.addWidget(test_dialog)
     return test_dialog
