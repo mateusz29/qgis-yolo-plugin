@@ -1,5 +1,21 @@
 # YOLO-MOD Plugin
 
+## Current release
+
+Version: **v2.0.0**
+
+Latest plugin package:  
+yolo_mod.zip
+
+Tested environment:
+
+- QGIS 3.40 (Bratislava)
+- QGIS 3.42 (Münster)
+- Windows 11
+- OSGeo4W distribution
+
+Future releases and updates will be published through the GitHub repository.
+
 ## Description
 
 YOLO-MOD is a QGIS plugin for object detection and classification in optical remote sensing imagery using **YOLO deep learning models**. It allows users to detect multiple object categories—such as ships, aircraft, helicopters, airports, and storage tanks—directly within standard GIS workflows. The plugin provides access to pre-trained models and tools for exporting detection results and generating datasets, without requiring prior machine learning experience. The latest version supports **YOLOv11 and YOLOv12** architectures with multiple model sizes.
@@ -35,7 +51,7 @@ The **best-performing models** (based on `mAP50-95`) are available via Google Dr
 | ShipRSImageNet    | Large       | 11           | No       | 0.7548   | 0.9025 |
 | ShipRSImageNet    | Small       | 11           | No       | 0.7543   | 0.9065 |
 
-###  Old models
+### Old models
 The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
 - **L6** – Large YOLOv8 model  
 - **Y9** – Small YOLOv8 model  
@@ -56,13 +72,13 @@ These images show grids of sample images from test sets with bounding boxes and 
 
 The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the **Install from ZIP** option.
 
-In addition to the plugin installation, several Python dependencies must be installed in the QGIS Python environment:
+In addition to the plugin installation, several Python dependencies must also be installed in the QGIS Python environment:
 
 - ultralytics
 - onnx
 - onnxruntime / onnxruntime-gpu
 
-Detailed installation instructions and tested dependency versions are provided below.
+Detailed installation instructions and tested dependency versions are provided below. Future versions of the plugin are planned to be distributed through the official QGIS Plugin Repository.
 
 ## Plugin Installation
 
@@ -199,3 +215,7 @@ For more context, see the related [Ultralytics GitHub issue #8609](https://githu
 The first ONNX inference usually has a higher initialization cost due to session setup.  
 Subsequent inferences are significantly faster, as the model and required resources are already loaded in memory.  
 In PyTorch (.pt), this initial overhead is often smaller.
+
+## Citation
+
+If you use YOLO-MOD in your research, please cite the corresponding SoftwareX article.
