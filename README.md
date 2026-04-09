@@ -168,7 +168,7 @@ Merge detection results from multiple layers by selecting a source and target la
 
 Automatically split the current QGIS map extent into image tiles based on user-defined width, height, and output directory.
 
-<img src="assets/plugin_canvas tiling.png" alt="GUI" width="50%">
+<img src="assets/plugin_canvas_tiling.png" alt="GUI" width="50%">
 
 ## Illustrative examples
 This example demonstrates expected output for planes recognition using default parameters and Large YOLOv8 model:
