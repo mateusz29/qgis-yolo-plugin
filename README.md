@@ -52,6 +52,18 @@ The project uses models from **Madajczak, A. (2023).** *Master Thesis supplement
 
 These images show grids of sample images from test sets with bounding boxes and labels around detected objects.
 
+## Installation Overview
+
+The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the **Install from ZIP** option.
+
+In addition to the plugin installation, several Python dependencies must be installed in the QGIS Python environment:
+
+- ultralytics
+- onnx
+- onnxruntime / onnxruntime-gpu
+
+Detailed installation instructions and tested dependency versions are provided below.
+
 ## Plugin Installation
 
 1. Download the plugin ZIP: **[yolo_mod.zip](https://mega.nz/file/6zhlnBJY#GJVhYYGo_Fo_MAP2XfvexfoMK3LEMPNM2sDxhfI_6BU)**
