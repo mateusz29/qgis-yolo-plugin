@@ -1,5 +1,7 @@
 # YOLO-MOD Plugin
 
+⚠️ Trained models are not included in this repository and must be downloaded from Zenodo (see the section below).
+
 ## Current release
 
 Version: **v2.0.0**
