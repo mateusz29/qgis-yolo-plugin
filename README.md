@@ -21,37 +21,56 @@ Future releases and updates will be published through the GitHub repository.
 YOLO-MOD is a QGIS plugin for object detection and classification in optical remote sensing imagery using **YOLO deep learning models**. It allows users to detect multiple object categories—such as ships, aircraft, helicopters, airports, and storage tanks—directly within standard GIS workflows. The plugin provides access to pre-trained models and tools for exporting detection results and generating datasets, without requiring prior machine learning experience. The latest version supports **YOLOv11 and YOLOv12** architectures with multiple model sizes.
 
 ## Datasets and Models
-The YOLO-MOD plugin does not include trained models in the plugin package.  
-Pre-trained models and datasets are distributed separately and can be downloaded using the links provided below.
+
+The YOLO-MOD plugin does not include trained models in the plugin package in order to keep it lightweight.
+
+### Model Download
+
+All trained models used in this project are publicly available via the Zenodo platform:
+
+👉 https://zenodo.org/records/19534383  
+
+👉 https://doi.org/10.5281/zenodo.19534383  
+
+The repository provides:
+
+- PyTorch (`.pt`) models  
+- ONNX (`.onnx`) models  
+- metadata files describing model architecture, training dataset, input resolution, and performance metrics  
+
+This ensures long-term accessibility and reproducibility of the results presented in the associated *SoftwareX* publication.
+
+### How to use models
+
+1. Download the archive from Zenodo  
+2. Extract `yolo-mod-models.zip`  
+3. Select the desired model (`.pt` or `.onnx`)  
+4. Load it in the YOLO-MOD plugin  
+
+### Notes
+
+- Trained models are **not stored in this repository**  
+- Zenodo is the **primary distribution platform**  
+- Previously used file hosting services (e.g., MEGA) may still be available as mirrors, but are not recommended for citation or long-term access  
+
+---
 
 ### Datasets
 
 1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – Original dataset containing `storage tank`, `airport`, `helicopter`, and `aircraft`.  
-   **[Modified DOTANA](https://mega.nz/file/2iA1RLpK#PEtxII1kMVUM60KDd4zwDGs8ghSK3w-g6Zazq_Q-bf4)** – `warships` removed to focus on non-ship objects.
 
 2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – Dataset containing `warships` and `civilian ships`.  
-   **[YOLO-formatted ShipRSImageNet](https://mega.nz/file/X7oFDTQI#elcggfqFufNkKySSAAkelz_PAN5UB3AoDr3AIy-irls)** – Converted/modified version for YOLO training.
 
-### Trained Models
+---
 
-Models are trained in **four sizes**: Small, Medium, Large, Extra Large.
+### Model Summary
 
-* Total of **16 trained models** (4 sizes × 2 datasets × 2 YOLO versions).
-
-The **best-performing models** (based on `mAP50-95`) are available via Google Drive: [link](https://mega.nz/folder/euQ1iIza#qc6S5maLXW0JNmW4tkyn8A)
-  
-**Best model filenames:**
-- `DOTANA_no_ships_yolo12x.onnx`, `DOTANA_no_ships_yolo12x.pt`
-- `DOTANA_no_ships_yolo11x.onnx`, `DOTANA_no_ships_yolo11x.pt`
-- `ships_yolo11l.onnx`, `ships_yolo11l.pt`
-- `ships_yolo11s.onnx`, `ships_yolo11s.pt`
-
-| Dataset           | Model Size  | Yolo version | Soft-NMS | mAP50-95 | mAP50  |
-| ----------------- | ----------  | ----------   | -------- | -------- | -----  |
-| DOTANA (no ships) | Extra Large | 12           | No       | 0.6039   | 0.9591 |
-| DOTANA (no ships) | Extra Large | 11           | No       | 0.6030   | 0.9581 |
-| ShipRSImageNet    | Large       | 11           | No       | 0.7548   | 0.9025 |
-| ShipRSImageNet    | Small       | 11           | No       | 0.7543   | 0.9065 |
+| Dataset           | Model Size  | YOLO version | mAP50-95 | mAP50  |
+| ----------------- | ----------  | ------------ | -------- | ------ |
+| DOTANA (no ships) | Extra Large | 12           | 0.6039   | 0.9591 |
+| DOTANA (no ships) | Extra Large | 11           | 0.6030   | 0.9581 |
+| ShipRSImageNet    | Large       | 11           | 0.7548   | 0.9025 |
+| ShipRSImageNet    | Small       | 11           | 0.7543   | 0.9065 |
 
 ### Old models
 The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
