@@ -15,7 +15,7 @@ homepage=https://github.com/mateusz29/yolo-mod
 
 changelog=1.0.0 - Initial public release.
 
-tags=yolo, object detection, deep learning, remote sensing, raster, gis, onnx, pytorch
+tags=yolo, object detection, deep learning, remote sensing, raster, qgis, onnx, pytorch
 category=Raster
 
 icon=icon.png
