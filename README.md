@@ -16,6 +16,12 @@ Tested environment:
 - Windows 11
 - OSGeo4W distribution
 
+## ⚙️ Python Dependencies
+
+YOLO-MOD requires the `ultralytics`, `torch`, and `onnxruntime` Python packages to be installed in the QGIS Python environment.
+
+⚠️ These dependencies are not installed automatically by QGIS and must be installed manually (e.g. in OSGeo4W).
+
 Future releases and updates will be published through the GitHub repository.
 
 ## Description
