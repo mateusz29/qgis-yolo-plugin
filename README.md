@@ -109,7 +109,7 @@ Detailed installation instructions and tested dependency versions are provided b
 
 ## Plugin Installation
 
-1. Download the plugin ZIP: **[yolo_mod.zip](https://mega.nz/file/GB9klSRA#Iqi8nWDOt68Y6SlHLyNz9WB3cYeZ3bkTueOtzLKAkgc)**
+1. Download the plugin ZIP: **[yolo_mod.zip](https://mega.nz/file/yQFT0QYA#HrRuEY-1COQu8B7XO7vM0LpPJJ2j7NvHBBbNesMSawo)**
 
 2. Run **QGIS**.
 
