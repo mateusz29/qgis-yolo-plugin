@@ -15,13 +15,7 @@ Tested environment:
 - QGIS 3.42 (Münster)
 - Windows 11
 - OSGeo4W distribution
-
-## ⚙️ Python Dependencies
-
-YOLO-MOD requires the `ultralytics`, `torch`, and `onnxruntime` Python packages to be installed in the QGIS Python environment.
-
-⚠️ These dependencies are not installed automatically by QGIS and must be installed manually (e.g. in OSGeo4W).
-
+  
 Future releases and updates will be published through the GitHub repository.
 
 ## Description
@@ -99,7 +93,11 @@ These images show grids of sample images from test sets with bounding boxes and 
 
 ## Installation Overview
 
-The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the **Install from ZIP** option.
+The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the Install from ZIP option.
+
+## ⚙️ Python Dependencies
+
+⚠️ These dependencies are not installed automatically by QGIS.
 
 In addition to the plugin installation, several Python dependencies must also be installed in the QGIS Python environment:
 
