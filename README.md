@@ -70,8 +70,12 @@ This ensures long-term accessibility and reproducibility of the results presente
 
 ### Datasets
 
-1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – storage tanks, airports, helicopters, aircraft  
-2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – warships and civilian ships
+1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – storage tanks, airports, helicopters, aircraft
+   - image resolution: 640 × 640 pixels 
+3. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – warships and civilian ships
+   - image resolution: 930 × 930 pixels
+
+These datasets consist of relatively small image patches compared to the high-resolution imagery used in cross-dataset benchmarking (FAIR1M), which contains images ranging from 2000 to 7000 pixels.
 
 ---
 
