@@ -70,8 +70,8 @@ This ensures long-term accessibility and reproducibility of the results presente
 
 ### Datasets
 
-1. **DOTANA** – storage tanks, airports, helicopters, aircraft  
-2. **ShipRSImageNet** – warships and civilian ships  
+1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – storage tanks, airports, helicopters, aircraft  
+2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – warships and civilian ships
 
 ---
 
