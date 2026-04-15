@@ -110,6 +110,7 @@ To assess the generalization capability of the proposed models beyond the traini
 This approach is consistent with standard practice, where baseline models are described but not necessarily redistributed.
 - Training duration: 100 epochs (identical for both models to ensure fair comparison)
 - Soft-NMS: not used
+- Both models were trained under identical conditions to ensure a fair comparison.
 
 The selected subset was designed to reflect challenging real-world conditions, including high object density, arbitrary object orientations, and complex backgrounds.
 
