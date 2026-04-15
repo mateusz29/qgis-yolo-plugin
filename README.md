@@ -91,6 +91,83 @@ The project uses models from **Madajczak, A. (2023).** *Master Thesis supplement
 
 These images show grids of sample images from test sets with bounding boxes and labels around detected objects.
 
+## Cross-dataset Benchmarking (FAIR1M)
+
+To assess the generalization capability of the proposed models beyond the training domain, additional experiments were conducted using a subset of the FAIR1M dataset [1], which was not used during model training or prior evaluation.
+
+### Experimental setup
+
+- Dataset: FAIR1M (selected maritime scenes)
+- Number of images: 70
+- Image resolution: 2000–7000 pixels (variable)
+- Scene types: port areas, coastal infrastructure, and ship-dense regions
+- Annotation format: oriented bounding boxes (OBB) converted to horizontal bounding boxes (HBB)
+- Training dataset: ShipRSImageNet
+- Models:
+  - YOLOv11 Large (`ships_yolo11l`)
+  - YOLOv8 Large
+  - The YOLOv8 Large model used in this study serves as a baseline and was trained using the publicly available Ultralytics implementation on the ShipRSImageNet dataset. To ensure a fair comparison, identical training conditions were applied. The trained YOLOv8 model is not distributed in this repository but can be reproduced following the described experimental setup.
+This approach is consistent with standard practice, where baseline models are described but not necessarily redistributed.
+- Training duration: 100 epochs (identical for both models to ensure fair comparison)
+- Soft-NMS: not used
+
+The selected subset was designed to reflect challenging real-world conditions, including high object density, arbitrary object orientations, and complex backgrounds.
+
+---
+
+### Results
+
+| Model          | mAP50  | mAP50-95 |
+|----------------|--------|----------|
+| YOLOv11 Large  | 0.0956 | 0.0531   |
+| YOLOv8 Large   | 0.0797 | 0.0471   |
+
+---
+
+### Reference (in-domain performance)
+
+For comparison, evaluation on the ShipRSImageNet test set yielded:
+
+| Model          | mAP50  | mAP50-95 |
+|----------------|--------|----------|
+| YOLOv11 Large  | 0.9025 | 0.7548   |
+
+---
+
+### Key observations
+
+- A substantial performance drop is observed when transferring models to unseen data (FAIR1M), with mAP50 values below 0.10.
+- This contrasts sharply with in-domain performance (mAP50 ≈ 0.90), indicating a significant generalization gap.
+- YOLOv11 Large slightly outperforms YOLOv8 Large; however, both models exhibit limited robustness in real-world conditions.
+- The performance degradation is not caused by insufficient training, as both models were trained for 100 epochs under identical conditions.
+
+---
+
+### Discussion
+
+The observed performance gap highlights the limitations of models trained on curated datasets when applied to complex, high-resolution remote sensing imagery. Key contributing factors include:
+
+- Differences in spatial resolution between training and evaluation data
+- Increased scene complexity and object density
+- Arbitrary object orientations
+- Domain shift between datasets
+
+These findings are consistent with the qualitative evaluation presented in the paper (Section 3.1), where similar failure modes (missed detections, classification errors, and false positives) are observed in large-swath imagery.
+
+---
+
+### Reproducibility
+
+All models, configuration files, and example inference scripts are available in this repository.
+
+The FAIR1M dataset is publicly available from its original source [1]. Due to licensing restrictions, the modified subset used in this study is not redistributed. However, the experimental setup can be reproduced by selecting maritime scenes (e.g., port areas and ship-dense regions) and converting the provided oriented bounding box (OBB) annotations to horizontal bounding boxes (HBB).
+
+---
+
+### Reference
+
+[1] Sun, X., Wang, P., Yan, Z., Xu, F., Wang, R., Diao, W., ... & Fu, K. (2022). FAIR1M: A benchmark dataset for fine-grained object recognition in high-resolution remote sensing imagery. *ISPRS Journal of Photogrammetry and Remote Sensing*, 184, 116–130.
+
 ## Installation Overview
 
 The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the Install from ZIP option.
