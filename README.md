@@ -119,7 +119,7 @@ To assess the generalization capability of the proposed models beyond the traini
 - YOLOv11 Large (`ships_yolo11l`)
 - YOLOv8 Large  
 
-The YOLOv8 Large model serves as a baseline and was trained using the Ultralytics implementation under identical conditions.
+The YOLOv8 Large model serves as a baseline and was trained using the publicly available Ultralytics implementation.
 
 - Training duration: 100 epochs (identical for both models)
 - Soft-NMS: not used
@@ -157,7 +157,7 @@ The YOLOv8 Large model serves as a baseline and was trained using the Ultralytic
 
 The performance gap highlights limitations of models trained on curated datasets when applied to real-world imagery:
 
-- resolution mismatch
+- differences in spatial resolution
 - scene complexity
 - object density
 - domain shift
@@ -168,7 +168,7 @@ These findings are consistent with qualitative evaluation results presented in t
 
 ## Large-scale evaluation (4096 × 4096)
 
-Additional experiments were conducted on large-swath imagery extracted via QGIS basemap services.
+Additional experiments were conducted on unseen data.
 
 These reveal:
 
