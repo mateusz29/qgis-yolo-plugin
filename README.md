@@ -2,6 +2,18 @@
 
 ⚠️ Trained models are not included in this repository and must be downloaded from Zenodo (see the section below).
 
+---
+
+## Highlights
+
+- Integration of YOLO-based object detection into QGIS workflows
+- Support for multi-class detection (ships, aircraft, helicopters, airports, storage tanks)
+- Compatibility with PyTorch (.pt) and ONNX (.onnx) models
+- Cross-dataset benchmarking on FAIR1M
+- Evaluation on large-swath imagery (4096 × 4096 pixels)
+
+---
+
 ## Current release
 
 Version: **v2.0.0**
@@ -18,9 +30,13 @@ Tested environment:
   
 Future releases and updates will be published through the GitHub repository.
 
+---
+
 ## Description
 
 YOLO-MOD is a QGIS plugin for object detection and classification in optical remote sensing imagery using **YOLO deep learning models**. It allows users to detect multiple object categories—such as ships, aircraft, helicopters, airports, and storage tanks—directly within standard GIS workflows. The plugin provides access to pre-trained models and tools for exporting detection results and generating datasets, without requiring prior machine learning experience. The latest version supports **YOLOv11 and YOLOv12** architectures with multiple model sizes.
+
+---
 
 ## Datasets and Models
 
@@ -31,7 +47,6 @@ The YOLO-MOD plugin does not include trained models in the plugin package in ord
 All trained models used in this project are publicly available via the Zenodo platform:
 
 👉 https://zenodo.org/records/19534383  
-
 👉 https://doi.org/10.5281/zenodo.19534383  
 
 The repository provides:
@@ -42,6 +57,8 @@ The repository provides:
 
 This ensures long-term accessibility and reproducibility of the results presented in the associated *SoftwareX* publication.
 
+---
+
 ### How to use models
 
 1. Download the archive from Zenodo  
@@ -49,37 +66,29 @@ This ensures long-term accessibility and reproducibility of the results presente
 3. Select the desired model (`.pt` or `.onnx`)  
 4. Load it in the YOLO-MOD plugin  
 
-### Notes
-
-- Trained models are **not stored in this repository**  
-- Zenodo is the **primary distribution platform**  
-- Previously used file hosting services (e.g., MEGA) may still be available as mirrors, but are not recommended for citation or long-term access  
-
 ---
 
 ### Datasets
 
-1. **[DOTANA](https://drive.google.com/file/d/1s0u--CU-VVmv0t_O9_3TNNA2VcLahLPu/)** – Original dataset containing `storage tank`, `airport`, `helicopter`, and `aircraft`.  
-
-2. **[ShipRSImageNet](https://github.com/zzndream/ShipRSImageNet?tab=readme-ov-file#dataset-download)** – Dataset containing `warships` and `civilian ships`.  
+1. **DOTANA** – storage tanks, airports, helicopters, aircraft  
+2. **ShipRSImageNet** – warships and civilian ships  
 
 ---
 
-### Model Summary
+## Model Summary
 
 | Dataset           | Model Size  | YOLO version | mAP50-95 | mAP50  |
-| ----------------- | ----------  | ------------ | -------- | ------ |
-| DOTANA (no ships) | Extra Large | 12           | 0.6039   | 0.9591 |
-| DOTANA (no ships) | Extra Large | 11           | 0.6030   | 0.9581 |
-| ShipRSImageNet    | Large       | 11           | 0.7548   | 0.9025 |
-| ShipRSImageNet    | Small       | 11           | 0.7543   | 0.9065 |
+|------------------|------------|--------------|----------|--------|
+| DOTANA (no ships)| Extra Large| 12           | 0.6039   | 0.9591 |
+| DOTANA (no ships)| Extra Large| 11           | 0.6030   | 0.9581 |
+| ShipRSImageNet   | Large      | 11           | 0.7548   | 0.9025 |
+| ShipRSImageNet   | Small      | 11           | 0.7543   | 0.9065 |
 
-### Old models
-The project uses models from **Madajczak, A. (2023).** *Master Thesis supplementary software (Version 1.0.0)* https://github.com/theATM/AirDetection :
-- **L6** – Large YOLOv8 model  
-- **Y9** – Small YOLOv8 model  
+These results correspond to evaluation on in-domain test datasets and serve as a reference for comparison with cross-dataset benchmarking results.
 
-## Visual Examples
+---
+
+## Visual examples (benchmark datasets)
 
 **DOTANA (no ships) predictions:**
 
@@ -89,7 +98,9 @@ The project uses models from **Madajczak, A. (2023).** *Master Thesis supplement
 
 ![ShipRSImageNet predictions](assets/ships_predictions.png)
 
-These images show grids of sample images from test sets with bounding boxes and labels around detected objects.
+These examples show detection results on benchmark datasets using test set images.
+
+---
 
 ## Cross-dataset Benchmarking (FAIR1M)
 
@@ -101,18 +112,17 @@ To assess the generalization capability of the proposed models beyond the traini
 - Number of images: 70
 - Image resolution: 2000–7000 pixels (variable)
 - Scene types: port areas, coastal infrastructure, and ship-dense regions
-- Annotation format: oriented bounding boxes (OBB) converted to horizontal bounding boxes (HBB)
+- Annotation format: OBB converted to HBB
 - Training dataset: ShipRSImageNet
-- Models:
-  - YOLOv11 Large (`ships_yolo11l`)
-  - YOLOv8 Large
-  - The YOLOv8 Large model used in this study serves as a baseline and was trained using the publicly available Ultralytics implementation on the ShipRSImageNet dataset. To ensure a fair comparison, identical training conditions were applied. The trained YOLOv8 model is not distributed in this repository but can be reproduced following the described experimental setup.
-This approach is consistent with standard practice, where baseline models are described but not necessarily redistributed.
-- Training duration: 100 epochs (identical for both models to ensure fair comparison)
-- Soft-NMS: not used
-- Both models were trained under identical conditions to ensure a fair comparison.
 
-The selected subset was designed to reflect challenging real-world conditions, including high object density, arbitrary object orientations, and complex backgrounds.
+**Models:**
+- YOLOv11 Large (`ships_yolo11l`)
+- YOLOv8 Large  
+
+The YOLOv8 Large model serves as a baseline and was trained using the Ultralytics implementation under identical conditions.
+
+- Training duration: 100 epochs (identical for both models)
+- Soft-NMS: not used
 
 ---
 
@@ -127,8 +137,6 @@ The selected subset was designed to reflect challenging real-world conditions, i
 
 ### Reference (in-domain performance)
 
-For comparison, evaluation on the ShipRSImageNet test set yielded:
-
 | Model          | mAP50  | mAP50-95 |
 |----------------|--------|----------|
 | YOLOv11 Large  | 0.9025 | 0.7548   |
@@ -137,37 +145,48 @@ For comparison, evaluation on the ShipRSImageNet test set yielded:
 
 ### Key observations
 
-- A substantial performance drop is observed when transferring models to unseen data (FAIR1M), with mAP50 values below 0.10.
-- This contrasts sharply with in-domain performance (mAP50 ≈ 0.90), indicating a significant generalization gap.
-- YOLOv11 Large slightly outperforms YOLOv8 Large; however, both models exhibit limited robustness in real-world conditions.
-- The performance degradation is not caused by insufficient training, as both models were trained for 100 epochs under identical conditions.
+- A substantial performance drop is observed on FAIR1M (mAP50 < 0.10)
+- In-domain performance remains high (mAP50 ≈ 0.90)
+- This demonstrates a significant generalization gap
+- YOLOv11 slightly outperforms YOLOv8, but both models show limited robustness
+- The degradation is not caused by insufficient training (100 epochs)
 
 ---
 
 ### Discussion
 
-The observed performance gap highlights the limitations of models trained on curated datasets when applied to complex, high-resolution remote sensing imagery. Key contributing factors include:
+The performance gap highlights limitations of models trained on curated datasets when applied to real-world imagery:
 
-- Differences in spatial resolution between training and evaluation data
-- Increased scene complexity and object density
-- Arbitrary object orientations
-- Domain shift between datasets
+- resolution mismatch
+- scene complexity
+- object density
+- domain shift
 
-These findings are consistent with the qualitative evaluation presented in the paper (Section 3.1), where similar failure modes (missed detections, classification errors, and false positives) are observed in large-swath imagery.
-
----
-
-### Reproducibility
-
-All models, configuration files, and example inference scripts are available in this repository.
-
-The FAIR1M dataset is publicly available from its original source [1]. Due to licensing restrictions, the modified subset used in this study is not redistributed. However, the experimental setup can be reproduced by selecting maritime scenes (e.g., port areas and ship-dense regions) and converting the provided oriented bounding box (OBB) annotations to horizontal bounding boxes (HBB).
+These findings are consistent with qualitative evaluation results presented in the paper.
 
 ---
 
-### Reference
+## Large-scale evaluation (4096 × 4096)
 
-[1] Sun, X., Wang, P., Yan, Z., Xu, F., Wang, R., Diao, W., ... & Fu, K. (2022). FAIR1M: A benchmark dataset for fine-grained object recognition in high-resolution remote sensing imagery. *ISPRS Journal of Photogrammetry and Remote Sensing*, 184, 116–130.
+Additional experiments were conducted on large-swath imagery extracted via QGIS basemap services.
+
+These reveal:
+
+- missed detections  
+- classification errors  
+- false positives  
+
+These effects are illustrated in Figure 7 of the paper.
+
+---
+
+## Reproducibility
+
+All models, configuration files, and example scripts are available in this repository.
+
+The FAIR1M dataset is publicly available. The modified subset is not redistributed due to licensing constraints, but experiments can be reproduced using the described setup.
+
+---
 
 ## Installation Overview
 
@@ -324,3 +343,7 @@ In PyTorch (.pt), this initial overhead is often smaller.
 ## Citation
 
 If you use YOLO-MOD in your research, please cite the corresponding SoftwareX article.
+
+### Reference
+
+[1] Sun, X., Wang, P., Yan, Z., Xu, F., Wang, R., Diao, W., ... & Fu, K. (2022). FAIR1M: A benchmark dataset for fine-grained object recognition in high-resolution remote sensing imagery. *ISPRS Journal of Photogrammetry and Remote Sensing*, 184, 116–130.
