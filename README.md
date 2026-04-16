@@ -191,7 +191,16 @@ All models, configuration files, and example scripts are available in this repos
 The FAIR1M dataset is publicly available. The modified subset is not redistributed due to licensing constraints, but experiments can be reproduced using the described setup.
 
 ---
+**Comparison of detection results on FAIR1M maritime scene (cropped region)**
 
+Left: YOLOv8 Large  
+Right: YOLOv11 Large  
+
+![comparison](assets/fair1m_comparison.png)
+
+YOLOv11 detects a larger number of vessels, particularly in clustered regions, while YOLOv8 fails to identify several objects. However, both models exhibit missed detections, especially for small and densely packed vessels. This example illustrates the limited generalization capability of models trained on ShipRSImageNet when applied to unseen high-resolution imagery. This behaviour is consistent with the quantitative results presented in the benchmark (mAP50 < 0.10).
+
+---
 ## Installation Overview
 
 The YOLO-MOD plugin is currently distributed as a ZIP package and can be installed in QGIS using the Install from ZIP option.
