@@ -88,11 +88,9 @@ These datasets consist of relatively small image patches compared to the high-re
 | ShipRSImageNet   | Large      | 11           | 0.7548   | 0.9025 |
 | ShipRSImageNet   | Small      | 11           | 0.7543   | 0.9065 |
 
-These results correspond to evaluation on in-domain test datasets and serve as a reference for comparison with cross-dataset benchmarking results.
+These results correspond to evaluation on in-domain test datasets and serve as a reference for comparison with cross-dataset benchmarking results. While the models achieve strong performance on benchmark datasets, their robustness in real-world scenarios remains an open question.
 
 ---
-
-## Visual examples (benchmark datasets)
 
 **DOTANA (no ships) predictions:**
 
@@ -137,7 +135,7 @@ The YOLOv8 Large model serves as a baseline and was trained using the publicly a
 | YOLOv11 Large  | 0.0956 | 0.0531   |
 | YOLOv8 Large   | 0.0797 | 0.0471   |
 
-These results indicate a substantial degradation in performance compared to in-domain evaluation. This represents an order-of-magnitude drop in detection performance, highlighting the difficulty of generalizing to unseen large-scale remote sensing imagery.
+These results indicate a substantial degradation in performance compared to in-domain evaluation (mAP50 ≈ 0.90). This represents an order-of-magnitude drop in detection performance, highlighting the difficulty of generalizing to unseen large-scale remote sensing imagery.
 
 ---
 
@@ -163,10 +161,11 @@ These results indicate a substantial degradation in performance compared to in-d
 
 The performance gap highlights limitations of models trained on curated datasets when applied to real-world imagery:
 
-- differences in spatial resolution
+- significant resolution mismatch (training: ≤ 930 pixels vs evaluation: up to 7000 pixels)
 - scene complexity
 - object density
 - domain shift
+- tiling-based inference may introduce boundary artifacts and context fragmentation
 
 These findings are consistent with qualitative evaluation results presented in the paper.
 
@@ -174,7 +173,7 @@ These findings are consistent with qualitative evaluation results presented in t
 
 ## Large-scale evaluation (4096 × 4096)
 
-Additional experiments were conducted on unseen data.
+Additional experiments were conducted on large-swath imagery (4096 × 4096 pixels) extracted from QGIS basemap services.
 
 These reveal:
 
@@ -193,6 +192,7 @@ All models, configuration files, and example scripts are available in this repos
 The FAIR1M dataset is publicly available. The modified subset is not redistributed due to licensing constraints, but experiments can be reproduced using the described setup.
 
 ---
+
 **Comparison of detection results on FAIR1M maritime scene (cropped region)**
 
 Left: YOLOv8 Large  
@@ -200,7 +200,7 @@ Right: YOLOv11 Large
 
 ![comparison](assets/fair1m_comparison.png)
 
-YOLOv11 detects a larger number of vessels, particularly in clustered regions, while YOLOv8 fails to identify several objects. However, both models exhibit missed detections, especially for small and densely packed vessels. This example illustrates the limited generalization capability of models trained on ShipRSImageNet when applied to unseen high-resolution imagery. This behaviour is consistent with the quantitative results presented in the benchmark (mAP50 < 0.10).
+YOLOv11 detects a larger number of vessels, particularly in clustered regions, while YOLOv8 fails to identify several objects. However, YOLOv11 also introduces additional duplicate detections. Both models exhibit missed detections, especially for small and densely packed vessels. This example illustrates the trade-off between recall and precision, and highlights the limited generalization capability of models trained on ShipRSImageNet when applied to unseen high-resolution imagery.
 
 ---
 ## Installation Overview
