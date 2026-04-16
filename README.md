@@ -102,7 +102,7 @@ These results correspond to evaluation on in-domain test datasets and serve as a
 
 ![ShipRSImageNet predictions](assets/ships_predictions.png)
 
-These examples show detection results on benchmark datasets using test set images.
+These examples show detection results on benchmark datasets using test set images. While the models achieve strong performance on benchmark datasets, their robustness in real-world scenarios remains an open question. To address this, we performed additional cross-dataset and large-scale evaluations.
 
 ---
 
@@ -136,6 +136,8 @@ The YOLOv8 Large model serves as a baseline and was trained using the publicly a
 |----------------|--------|----------|
 | YOLOv11 Large  | 0.0956 | 0.0531   |
 | YOLOv8 Large   | 0.0797 | 0.0471   |
+
+These results indicate a substantial degradation in performance compared to in-domain evaluation. This represents an order-of-magnitude drop in detection performance, highlighting the difficulty of generalizing to unseen large-scale remote sensing imagery.
 
 ---
 
