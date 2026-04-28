@@ -177,8 +177,7 @@ Additional experiments were conducted on large-swath imagery (4096 × 4096 pixel
 
 These reveal:
 
-- missed detections  
-- classification errors  
+- missed detections    
 - false positives  
 
 These effects are illustrated in Figure 7 of the paper.
